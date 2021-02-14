@@ -1,7 +1,9 @@
 extern crate portmidi as pm;
+extern crate libxdo;
 
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
+use libxdo::XDo;
 
 #[derive(FromPrimitive)]
 enum ChannelMessageType {
@@ -24,18 +26,18 @@ enum FormattedMidiMessage {
     ProgramChange { channel: u8, program: u8 },
     ChannelAftertouch { channel: u8, value: u8 },
     PitchBendChange { channel: u8, value: u16 },
-    TimingClock,
-    Start,
-    Continue,
-    Stop,
+    //TimingClock,
+    //Start,
+    //Continue,
+    //Stop,
     Other
 }
 
-fn print_devices(pm: &pm::PortMidi) {
-    for dev in pm.devices().unwrap() {
-        println!("{}", dev);
-    }
-}
+//fn print_devices(pm: &pm::PortMidi) {
+//    for dev in pm.devices().unwrap() {
+//        println!("{}", dev);
+//    }
+//}
 
 fn parse_message(msg: &pm::MidiMessage) -> FormattedMidiMessage {
     let chan: u8 = msg.status & 0x0F;
@@ -106,11 +108,21 @@ fn parse_message(msg: &pm::MidiMessage) -> FormattedMidiMessage {
 }
 
 fn monitor(port: &pm::InputPort) {
+    let xdo = XDo::new(None).unwrap();
+
     while let Ok(_) = port.poll() {
         if let Ok(Some(events)) = port.read_n(1024) {
             for event in events.iter() {
                 let fmsg = parse_message(&event.message);
                 println!("{:?}", fmsg);
+
+                if let FormattedMidiMessage::NoteOff { channel: _, key, velocity: _ } = fmsg {
+                    match key {
+                        60 => { xdo.enter_text("Hello world!", 250).unwrap(); }
+                        61 => { xdo.send_keysequence("ctrl+c", 0).unwrap(); }
+                        _ => {}
+                    }
+                }
             }
         }
     }
