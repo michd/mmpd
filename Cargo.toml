@@ -1,13 +1,7 @@
-[package]
-name = "midi-macro-pad"
-version = "0.1.0"
-authors = ["Michael Duerinckx <mich@michd.me>"]
-edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
 
-[dependencies]
-num-traits = "^0.2"
-num-derive = "^0.2"
-portmidi = "^0.2"
-libxdo = "^0.6"
+members = [
+    "midi-macro-pad-lib",
+    "midi-macro-pad-bin"
+]
