@@ -20,19 +20,17 @@ enum ChannelMessageType {
 }
 
 pub struct Midir {
-    tx: SyncSender<MidiMessage>,
     active: Arc<Mutex<bool>>,
 }
 
 impl Midir {
-    pub fn new(tx: SyncSender<MidiMessage>) -> Midir {
+    pub fn new() -> Midir {
         Midir {
-            tx,
             active: Arc::new(Mutex::new(false)),
         }
     }
 
-    pub fn start(&mut self) -> Option<thread::JoinHandle<()>> {
+    pub fn start(&mut self, tx: SyncSender<MidiMessage>) -> Option<thread::JoinHandle<()>> {
         let active = Arc::clone(&self.active);
         let mut is_active = active.lock().unwrap();
         if *is_active { return None; }
@@ -40,7 +38,7 @@ impl Midir {
 
         let active = Arc::clone(&self.active);
 
-        let tx: SyncSender<MidiMessage> = self.tx.clone();
+        let tx: SyncSender<MidiMessage> = tx.clone();
 
         let handle = thread::spawn(move || {
 
@@ -75,7 +73,6 @@ impl Midir {
             }
 
             println!("Stopping in thread");
-            // TODO: fixme: seems like the mpsc channel does not get invalidated
         });
 
         Some(handle)

@@ -80,8 +80,8 @@ fn main() {
     println!("MIDI Macro Pad starting.");
     let (tx, rx) = midi::get_midi_bus();
 
-    let mut mr = midi::adapters::midir::Midir::new(tx);
-    mr.start();
+    let mut mr = midi::adapters::midir::Midir::new();
+    mr.start(tx);
     let xdo = XDo::new(None).unwrap();
     for msg in rx {
         println!("{:?}", msg);
