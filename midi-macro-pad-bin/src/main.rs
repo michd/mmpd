@@ -4,8 +4,10 @@ extern crate midir;
 use std::process::Command;
 use std::str;
 use std::vec::Vec;
+use std::env;
 use libxdo::XDo;
 use midi_macro_pad_lib::midi::{self, types::MidiMessage};
+use midi::adapters::midir::Midir;
 
 #[derive(Debug)]
 struct FocusedWindow {
@@ -78,10 +80,55 @@ fn get_focused_window() -> FocusedWindow {
 
 fn main() {
     println!("MIDI Macro Pad starting.");
+    let args: Vec<String> = env::args().collect();
+    println!("Running with args:\n{:?}", args);
+
+    if let Some(cmd) = args.get(1) {
+        match cmd.as_str() {
+            "list-ports" => task_list_ports(),
+            "listen" => task_listen(args.get(2)),
+
+            _ => {
+                eprintln!("Unrecognised argument '{}'", cmd);
+                return;
+            }
+        }
+
+        return;
+    }
+
+    // TODO: if no command is specified, load config file from default location
+    // TODO: otherwise, allow specifying config file from args too and use that
+
+    println!("Config file loading not yet implemented, exiting.");
+}
+
+fn task_list_ports() {
+    let port_names = Midir::list_ports();
+
+    println!("Available midi ports:");
+
+    for port_name in port_names.iter() {
+        println!("{}", port_name);
+    }
+}
+
+fn task_listen(port_pattern: Option<&String>) -> () {
+    if let None = port_pattern {
+        eprintln!("No port pattern specified");
+        return ();
+    }
+
     let (tx, rx) = midi::get_midi_bus();
 
-    let mut mr = midi::adapters::midir::Midir::new();
-    mr.start(tx);
+    let mut mr = Midir::new();
+
+    let handle = mr.start(String::from(port_pattern.unwrap()), tx);
+
+    if let None = handle {
+        eprintln!("Unable to start listening for MIDI events.");
+    }
+
     let xdo = XDo::new(None).unwrap();
     for msg in rx {
         println!("{:?}", msg);
@@ -125,6 +172,5 @@ fn main() {
         }
     }
 
-    // TODO this is never reached event when we exit the loop in midir.
     println!("Exiting.");
 }
