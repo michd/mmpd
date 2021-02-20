@@ -1,24 +1,11 @@
 use crate::midi::types::MidiMessage;
 use midir::{MidiInput, MidiInputPort};
-use num_derive::FromPrimitive;
-use num_traits::FromPrimitive;
 use std::sync::mpsc::SyncSender;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use crate::midi::adapters::MidiAdapter;
-
-#[derive(FromPrimitive)]
-enum ChannelMessageType {
-    NoteOff = 0b1000isize,
-    NoteOn = 0b1001isize,
-    PolyAftertouch = 0b1010isize,
-    ControlChange = 0b1011isize,
-    ProgramChange = 0b1100isize,
-    ChannelAfterTouch = 0b1101isize,
-    PitchBendChange = 0b1110isize,
-    System = 0b1111isize,
-}
+use crate::midi::parse_message;
 
 pub struct Midir {
     active: Arc<Mutex<bool>>,
@@ -115,8 +102,6 @@ impl MidiAdapter for Midir {
                     break;
                 }
             }
-
-            println!("Stopping in thread");
         });
 
         Some(handle)
@@ -130,53 +115,3 @@ impl MidiAdapter for Midir {
 }
 
 // TODO: move out of here
-fn parse_message(bytes: &[u8]) -> Option<MidiMessage> {
-    let status = *bytes.get(0)?;
-
-    let chan: u8 = status & 0x0F;
-
-    return match FromPrimitive::from_u8((status & 0xF0) >> 4) {
-        Some(ChannelMessageType::NoteOff) => Some(MidiMessage::NoteOff {
-            channel: chan,
-            key: *bytes.get(1)?,
-            velocity: *bytes.get(2)?,
-        }),
-
-        Some(ChannelMessageType::NoteOn) => Some(MidiMessage::NoteOn {
-            channel: chan,
-            key: *bytes.get(1)?,
-            velocity: *bytes.get(2)?,
-        }),
-
-        Some(ChannelMessageType::PolyAftertouch) => Some(MidiMessage::PolyAftertouch {
-            channel: chan,
-            key: *bytes.get(1)?,
-            value: *bytes.get(2)?,
-        }),
-
-        Some(ChannelMessageType::ControlChange) => Some(MidiMessage::ControlChange {
-            channel: chan,
-            control: *bytes.get(1)?,
-            value: *bytes.get(2)?,
-        }),
-
-        Some(ChannelMessageType::ProgramChange) => Some(MidiMessage::ProgramChange {
-            channel: chan,
-            program: *bytes.get(1)?,
-        }),
-
-        Some(ChannelMessageType::ChannelAfterTouch) => Some(MidiMessage::ChannelAftertouch {
-            channel: chan,
-            value: *bytes.get(1)?,
-        }),
-
-        Some(ChannelMessageType::PitchBendChange) => Some(MidiMessage::PitchBendChange {
-            channel: chan,
-            value: ((*bytes.get(1)? & 0b01111111u8) as u16)
-                | (((*bytes.get(2)? as u16 & 0b01111111u16) << 7) as u16),
-        }),
-
-        Some(ChannelMessageType::System) => Some(MidiMessage::Other),
-        None => None,
-    };
-}
