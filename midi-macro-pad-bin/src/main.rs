@@ -1,5 +1,4 @@
 extern crate libxdo;
-extern crate midir;
 
 use std::process::Command;
 use std::str;
@@ -7,7 +6,6 @@ use std::vec::Vec;
 use std::env;
 use libxdo::XDo;
 use midi_macro_pad_lib::midi::{self, types::MidiMessage};
-use midi::adapters::midir::Midir;
 
 #[derive(Debug)]
 struct FocusedWindow {
@@ -104,7 +102,14 @@ fn main() {
 }
 
 fn task_list_ports() {
-    let port_names = Midir::list_ports();
+    let midi_adapter = midi::get_adapter();
+
+    if let None = midi_adapter {
+        eprintln!("Unable to initialize MIDI adapter.");
+        return;
+    }
+
+    let port_names = midi_adapter.unwrap().list_ports();
 
     println!("Available midi ports:");
 
@@ -119,11 +124,20 @@ fn task_listen(port_pattern: Option<&String>) -> () {
         return ();
     }
 
+    let port_pattern = port_pattern.unwrap();
+
     let (tx, rx) = midi::get_midi_bus();
 
-    let mut mr = Midir::new();
+    let midi_adapter = midi::get_adapter();
 
-    let handle = mr.start(String::from(port_pattern.unwrap()), tx);
+    if let None = midi_adapter {
+        eprintln!("Unable to set up midi adapter");
+        return;
+    }
+
+    let mut midi_adapter = midi_adapter.unwrap();
+
+    let handle = midi_adapter.start_listening(String::from(port_pattern), tx);
 
     if let None = handle {
         eprintln!("Unable to start listening for MIDI events.");
@@ -168,7 +182,7 @@ fn task_listen(port_pattern: Option<&String>) -> () {
         // "Stop" button on Arturia Keystep, exit the program
         if let MidiMessage::ControlChange { channel: _, control: 51, value: 127 } = msg {
             println!("Stopping");
-            mr.stop();
+            midi_adapter.stop_listening();
         }
     }
 

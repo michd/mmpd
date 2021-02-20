@@ -8,6 +8,9 @@ use crate::midi::types::MidiMessage;
 // the thing to send messages down the stream so it can go ahead and run in its own thread
 // No need for a trait for a messenger then.
 
+pub use adapters::get_adapter;
+
 pub fn get_midi_bus() -> (SyncSender<MidiMessage>, Receiver<MidiMessage>) {
     mpsc::sync_channel(1024)
 }
+

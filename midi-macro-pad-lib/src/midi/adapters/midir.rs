@@ -6,6 +6,7 @@ use std::sync::mpsc::SyncSender;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
+use crate::midi::adapters::MidiAdapter;
 
 #[derive(FromPrimitive)]
 enum ChannelMessageType {
@@ -23,15 +24,39 @@ pub struct Midir {
     active: Arc<Mutex<bool>>,
 }
 
+const CLIENT_NAME: &str = "Midir client";
+
 impl Midir {
-    pub fn new() -> Midir {
-        Midir {
+    pub fn new() -> Option<impl MidiAdapter> {
+        Some(Midir {
             active: Arc::new(Mutex::new(false)),
-        }
+        })
     }
 
-    pub fn list_ports() -> Vec<String> {
-        let midi_in = MidiInput::new("MIDI input").unwrap();
+    fn get_port(&self, pattern: &str) -> Option<MidiInputPort> {
+        let midi_in = MidiInput::new(CLIENT_NAME).ok()?;
+
+        midi_in
+            .ports()
+            .iter()
+            .find(|p|
+                midi_in.port_name(p)
+                    .unwrap_or(String::from(""))
+                    .contains(pattern)
+            ).cloned()
+    }
+}
+
+impl MidiAdapter for Midir {
+
+    fn list_ports(&self) -> Vec<String> {
+        let midi_in = MidiInput::new(CLIENT_NAME);
+
+        if let Err(_e) = midi_in {
+            return Vec::new();
+        }
+
+        let midi_in = midi_in.unwrap();
         let ports = midi_in.ports();
 
         ports
@@ -44,7 +69,7 @@ impl Midir {
             .collect()
     }
 
-    pub fn start(
+    fn start_listening(
         &mut self,
         port_pattern: String,
         tx: SyncSender<MidiMessage>,
@@ -58,9 +83,11 @@ impl Midir {
 
         let active = Arc::clone(&self.active);
 
+
         let tx: SyncSender<MidiMessage> = tx.clone();
-        let midi_in = MidiInput::new("MIDI input").unwrap();
-        let port = Midir::get_port(&midi_in, &port_pattern)?;
+        let port = self.get_port(&port_pattern)?;
+
+        let midi_in = MidiInput::new(CLIENT_NAME).ok()?;
 
         let handle = thread::spawn(move || {
             let port_name = midi_in
@@ -95,20 +122,14 @@ impl Midir {
         Some(handle)
     }
 
-    pub fn stop(&self) {
+    fn stop_listening(&self) {
         let active = Arc::clone(&self.active);
         let mut is_active = active.lock().unwrap();
         *is_active = false;
     }
-
-    fn get_port(midi_in: &MidiInput, pattern: &str) -> Option<MidiInputPort> {
-        midi_in
-            .ports()
-            .iter()
-            .find(|p| midi_in.port_name(p).unwrap_or(String::from("")).contains(pattern)).cloned()
-    }
 }
 
+// TODO: move out of here
 fn parse_message(bytes: &[u8]) -> Option<MidiMessage> {
     let status = *bytes.get(0)?;
 
