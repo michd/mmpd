@@ -3,26 +3,70 @@ pub use adapters::get_adapter;
 
 use std::sync::mpsc::{self, SyncSender, Receiver};
 
+/// Gets a bus for sending/receiving MIDI messages from the MIDI implementation
 pub fn get_midi_bus() -> (SyncSender<MidiMessage>, Receiver<MidiMessage>) {
     mpsc::sync_channel(1024)
 }
 
+/// MidiMessage is a parsed MIDI message, structured to be easy to work with.
+/// It is parsed from 3 raw bytes of data.
 #[derive(Debug, Eq, PartialEq)]
 pub enum MidiMessage {
+    /// Key released.
+    /// channel: 0-15
+    /// key: Which key was released, 0-127
+    /// velocity: Speed by which the key was released, 0-127
     NoteOff { channel: u8, key: u8, velocity: u8 },
+
+    /// Key pressed.
+    /// channel: 0-15
+    /// key: Which key was pressed, 0-127
+    /// velocity: Speed by which the key get pressed down, 0-127
     NoteOn { channel: u8, key: u8, velocity: u8 },
+
+    /// Pressure on a key after it was initially pressed down (can continually change)
+    /// channel: 0-15
+    /// key: Which key this is about, 0-127
+    /// value: current pressure level on the key, 0-127
     PolyAftertouch { channel: u8, key: u8, value: u8 },
+
+    /// A control had its value changed (a fader or rotary knob moved, button pressed, ...)
+    /// channel: 0-15
+    /// control: identifier for which control it is, 0-127
+    /// value: new value, 0-127
     ControlChange { channel: u8, control: u8, value: u8 },
+
+    /// The selected program/patch was changed
+    /// channel: 0-15
+    /// program: program identifier, 0-127
     ProgramChange { channel: u8, program: u8 },
+
+    /// Channel-wide pressure on any of the keys (most key beds don't have key-specific aftertouch)
+    /// channel: 0-15
+    /// value: current pressure level on any of the keys, 0-127
     ChannelAftertouch { channel: u8, value: u8 },
+
+    /// Pitch bender position changed
+    /// channel: 0-15
+    /// value: current position, 0-16,384 (14 bit)
     PitchBendChange { channel: u8, value: u16 },
+
     //TimingClock,
     //Start,
     //Continue,
     //Stop,
+
+    /// Catch-all for any non-implemented messages
     Other
 }
 
+/// Parses raw 3-byte MIDI messages into structured MIDI messages
+///
+/// If there is an invalid amount of data available, or the most significant 4 bits of the first
+/// byte make no sense, returns None.
+///
+/// See the MIDI spec's summary of MIDI messages:
+/// https://www.midi.org/specifications-old/item/table-1-summary-of-midi-message
 fn parse_message(bytes: &[u8]) -> Option<MidiMessage> {
     let first_byte = *bytes.get(0)?;
 

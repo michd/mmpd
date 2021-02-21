@@ -7,6 +7,7 @@ use midi_macro_pad_lib::keyboard_control;
 fn main() {
     println!("MIDI Macro Pad starting.");
     let args: Vec<String> = env::args().collect();
+
     println!("Running with args:\n{:?}", args);
 
     if let Some(cmd) = args.get(1) {
@@ -29,6 +30,11 @@ fn main() {
     println!("Config file loading not yet implemented, exiting.");
 }
 
+/// Prints a list of all available MIDI input devices connected to this computer to STDOUT.
+///
+/// If the MIDI adapter cannot be initialized, prints an error.
+///
+/// The output of this is useful for specifying a port to listen to, see `task_listen`.
 fn task_list_ports() {
     let midi_adapter = midi::get_adapter();
 
@@ -46,6 +52,12 @@ fn task_list_ports() {
     }
 }
 
+/// Opens a connection on a port which' name contains port_pattern and begins listening for
+/// MIDI messages.
+///
+/// Each message will be parsed and printed to STDOUT.
+///
+/// Some filters are hardcoded at the moment and will execute a key sequence when it occurs.
 fn task_listen(port_pattern: Option<&String>) -> () {
     if let None = port_pattern {
         eprintln!("No port pattern specified");
