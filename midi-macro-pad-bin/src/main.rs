@@ -1,11 +1,8 @@
-extern crate libxdo;
-
-use std::str;
 use std::vec::Vec;
 use std::env;
-use libxdo::XDo;
 use midi_macro_pad_lib::midi::{self, MidiMessage};
-use midi_macro_pad_lib::focus::{self, FocusedWindow};
+use midi_macro_pad_lib::focus;
+use midi_macro_pad_lib::keyboard_control;
 
 fn main() {
     println!("MIDI Macro Pad starting.");
@@ -77,13 +74,21 @@ fn task_listen(port_pattern: Option<&String>) -> () {
 
     let focus_adapter = focus_adapter.unwrap();
 
+    let kb_adapter = keyboard_control::get_adapter();
+
+    if let None = kb_adapter {
+        eprintln!("Unable to set up keyboard adapter - can't send key sequences.");
+        return;
+    }
+
+    let kb_adapter = kb_adapter.unwrap();
+
     let handle = midi_adapter.start_listening(String::from(port_pattern), tx);
 
     if let None = handle {
         eprintln!("Unable to start listening for MIDI events.");
     }
 
-    let xdo = XDo::new(None).unwrap();
     for msg in rx {
         println!("{:?}", msg);
 
@@ -95,19 +100,19 @@ fn task_listen(port_pattern: Option<&String>) -> () {
                     let fw = focus_adapter.get_focused_window().unwrap();
                     if fw.window_name.ends_with("Inkscape") {
                         println!("in inkscape, executing centre on horizontal axis.");
-                        xdo.send_keysequence("ctrl+shift+a", 100).unwrap();
+                        kb_adapter.send_keysequence("ctrl+shift+a", 100);
                         for _ in 0..6 {
-                            xdo.send_keysequence("Tab", 100).unwrap();
+                            kb_adapter.send_keysequence("Tab", 100);
                         }
-                        xdo.send_keysequence("Return", 100).unwrap();
+                        kb_adapter.send_keysequence("Return", 100);
                     } else {
                         println!("not in inkscape, doing nothing.");
                     }
                 }
 
-                60 => { xdo.enter_text("Hello world!", 250).unwrap(); }
+                60 => { kb_adapter.send_text("Hello world!", 250); }
 
-                61 => { xdo.send_keysequence("ctrl+c", 0).unwrap(); }
+                61 => { kb_adapter.send_keysequence("ctrl+c", 0); }
 
                 62 => {
                     let fw = focus_adapter.get_focused_window();

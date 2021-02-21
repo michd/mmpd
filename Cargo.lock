@@ -157,15 +157,14 @@ checksum = "df39d232f5c40b0891c10216992c2f250c054105cb1e56f0fc9032db6203ecc1"
 name = "midi-macro-pad-bin"
 version = "0.1.0"
 dependencies = [
- "libxdo",
  "midi-macro-pad-lib",
- "midir",
 ]
 
 [[package]]
 name = "midi-macro-pad-lib"
 version = "0.1.0"
 dependencies = [
+ "libxdo",
  "midir",
  "num-derive",
  "num-traits",
