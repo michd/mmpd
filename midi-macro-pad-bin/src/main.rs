@@ -2,7 +2,7 @@ use std::vec::Vec;
 use std::env;
 use midi_macro_pad_lib::midi::{self, MidiMessage};
 use midi_macro_pad_lib::focus;
-use midi_macro_pad_lib::keyboard_control;
+use midi_macro_pad_lib::actions::{Action, ActionRunner};
 
 fn main() {
     println!("MIDI Macro Pad starting.");
@@ -86,20 +86,31 @@ fn task_listen(port_pattern: Option<&String>) -> () {
 
     let focus_adapter = focus_adapter.unwrap();
 
-    let kb_adapter = keyboard_control::get_adapter();
-
-    if let None = kb_adapter {
-        eprintln!("Unable to set up keyboard adapter - can't send key sequences.");
-        return;
-    }
-
-    let kb_adapter = kb_adapter.unwrap();
-
     let handle = midi_adapter.start_listening(String::from(port_pattern), tx);
 
     if let None = handle {
         eprintln!("Unable to start listening for MIDI events.");
+        return;
     }
+
+    let action_runner = ActionRunner::new();
+
+    if let None = action_runner {
+        eprintln!("Unable to get an action runner.");
+        return;
+    }
+
+    let action_runner = action_runner.unwrap();
+
+    let inkscape_center_vertical = Action::Combination(vec![
+        Action::KeySequence("ctrl+shift+a", 1),
+        Action::KeySequence("Tab", 6),
+        Action::KeySequence("Return", 1),
+    ]);
+
+    let type_hello_world = Action::EnterText("Hello world!", 1);
+
+    let ctrl_c = Action::KeySequence("ctrl+c", 1);
 
     for msg in rx {
         println!("{:?}", msg);
@@ -111,20 +122,16 @@ fn task_listen(port_pattern: Option<&String>) -> () {
                     // TODO: handle None
                     let fw = focus_adapter.get_focused_window().unwrap();
                     if fw.window_name.ends_with("Inkscape") {
-                        println!("in inkscape, executing centre on horizontal axis.");
-                        kb_adapter.send_keysequence("ctrl+shift+a", 100);
-                        for _ in 0..6 {
-                            kb_adapter.send_keysequence("Tab", 100);
-                        }
-                        kb_adapter.send_keysequence("Return", 100);
+                        println!("in inkscape, executing centre on vertical axis.");
+                        action_runner.run(&inkscape_center_vertical);
                     } else {
                         println!("not in inkscape, doing nothing.");
                     }
                 }
 
-                60 => { kb_adapter.send_text("Hello world!", 250); }
+                60 => action_runner.run(&type_hello_world),
 
-                61 => { kb_adapter.send_keysequence("ctrl+c", 0); }
+                61 => action_runner.run(&ctrl_c),
 
                 62 => {
                     let fw = focus_adapter.get_focused_window();
@@ -139,7 +146,6 @@ fn task_listen(port_pattern: Option<&String>) -> () {
 
         // "Stop" button on Arturia Keystep, exit the program
         if let MidiMessage::ControlChange { channel: _, control: 51, value: 127 } = msg {
-            println!("Stopping");
             midi_adapter.stop_listening();
         }
     }
