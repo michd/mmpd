@@ -1,5 +1,5 @@
 use std::sync::mpsc::SyncSender;
-use crate::midi::types::MidiMessage;
+use crate::midi::MidiMessage;
 use std::thread;
 use crate::midi::adapters::midir::Midir;
 

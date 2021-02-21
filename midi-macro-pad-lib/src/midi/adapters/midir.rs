@@ -1,4 +1,4 @@
-use crate::midi::types::MidiMessage;
+use crate::midi::MidiMessage;
 use midir::{MidiInput, MidiInputPort};
 use std::sync::mpsc::SyncSender;
 use std::sync::{Arc, Mutex};

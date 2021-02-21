@@ -1,80 +1,11 @@
 extern crate libxdo;
 
-use std::process::Command;
 use std::str;
 use std::vec::Vec;
 use std::env;
 use libxdo::XDo;
-use midi_macro_pad_lib::midi::{self, types::MidiMessage};
-
-#[derive(Debug)]
-struct FocusedWindow {
-    window_class: Vec<String>,
-    window_name: String,
-}
-
-impl FocusedWindow {
-    fn blank() -> FocusedWindow {
-        return FocusedWindow {
-            window_class: vec![],
-            window_name: String::from(""),
-        }
-    }
-}
-
-fn parse_quoted_list(list: &str) -> Vec<String> {
-    let split = list.split("\", \"");
-
-    let result: Vec<&str> = split.collect();
-    let mut converted_result: Vec<String> = vec![];
-
-    for item in result.iter() {
-        converted_result.push(String::from(item.to_owned()))
-    }
-
-    return converted_result
-}
-
-fn get_focused_window() -> FocusedWindow {
-    let raw_window_id = Command::new("xdotool")
-        .arg("getwindowfocus")
-        .output()
-        .expect("couldn't get window id");
-
-    let focused_window_id = str::from_utf8(raw_window_id.stdout.as_slice()).unwrap().lines().next().unwrap();
-
-    let raw_output = Command::new("xprop")
-        .arg("-root")
-        .arg("-id")
-        .arg(focused_window_id)
-        .arg("WM_CLASS")
-        .arg("WM_NAME")
-        .output()
-        .expect("couldn't get focused window info");
-
-    let output = str::from_utf8(raw_output.stdout.as_slice()).unwrap();
-
-    let mut fw = FocusedWindow::blank();
-
-    for line in output.lines() {
-        if line.starts_with("WM_CLASS(STRING) = \"") {
-            let len = line.len();
-            fw.window_class = parse_quoted_list(&line[20..len - 1]);
-        }
-
-        if line.starts_with("WM_NAME(STRING) = \"") {
-            let len = line.len();
-            fw.window_name = String::from(&line[19..len - 1]);
-        }
-
-        if line.starts_with("WM_NAME(COMPOUND_TEXT) = \"") {
-            let len = line.len();
-            fw.window_name = String::from(&line[26..len - 1]);
-        }
-    }
-
-    return fw;
-}
+use midi_macro_pad_lib::midi::{self, MidiMessage};
+use midi_macro_pad_lib::focus::{self, FocusedWindow};
 
 fn main() {
     println!("MIDI Macro Pad starting.");
@@ -137,6 +68,15 @@ fn task_listen(port_pattern: Option<&String>) -> () {
 
     let mut midi_adapter = midi_adapter.unwrap();
 
+    let focus_adapter = focus::get_adapter();
+
+    if let None = focus_adapter {
+        eprintln!("Unable to set up focus adapter - can't detect focused window.");
+        return;
+    }
+
+    let focus_adapter = focus_adapter.unwrap();
+
     let handle = midi_adapter.start_listening(String::from(port_pattern), tx);
 
     if let None = handle {
@@ -151,7 +91,8 @@ fn task_listen(port_pattern: Option<&String>) -> () {
             match key {
                 // Some hardcoded test actions for now
                 48 => {
-                    let fw = get_focused_window();
+                    // TODO: handle None
+                    let fw = focus_adapter.get_focused_window().unwrap();
                     if fw.window_name.ends_with("Inkscape") {
                         println!("in inkscape, executing centre on horizontal axis.");
                         xdo.send_keysequence("ctrl+shift+a", 100).unwrap();
@@ -169,7 +110,7 @@ fn task_listen(port_pattern: Option<&String>) -> () {
                 61 => { xdo.send_keysequence("ctrl+c", 0).unwrap(); }
 
                 62 => {
-                    let fw = get_focused_window();
+                    let fw = focus_adapter.get_focused_window();
                     println!("focused window: {:?}", fw);
                 }
 
