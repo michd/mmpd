@@ -1,9 +1,7 @@
 pub mod adapters;
 pub use adapters::get_adapter;
 
-use num_derive::FromPrimitive;
 use std::sync::mpsc::{self, SyncSender, Receiver};
-use num_traits::FromPrimitive;
 
 pub fn get_midi_bus() -> (SyncSender<MidiMessage>, Receiver<MidiMessage>) {
     mpsc::sync_channel(1024)
@@ -24,66 +22,62 @@ pub enum MidiMessage {
     //Stop,
     Other
 }
-#[derive(FromPrimitive)]
-enum ChannelMessageType {
-    NoteOff = 0b1000isize,
-    NoteOn = 0b1001isize,
-    PolyAftertouch = 0b1010isize,
-    ControlChange = 0b1011isize,
-    ProgramChange = 0b1100isize,
-    ChannelAfterTouch = 0b1101isize,
-    PitchBendChange = 0b1110isize,
-    System = 0b1111isize,
-}
 
 fn parse_message(bytes: &[u8]) -> Option<MidiMessage> {
-    let status = *bytes.get(0)?;
-    let channel: u8 = status & 0x0F;
+    let first_byte = *bytes.get(0)?;
 
-    return match FromPrimitive::from_u8((status & 0xF0) >> 4) {
-        Some(ChannelMessageType::NoteOff) => Some(MidiMessage::NoteOff {
+    // Status is 4 most significant bytes of the first byte, here shifted right by 4 bits so we can
+    // Compare against 4 bit numbers.
+    let status = (first_byte & 0xF0) >> 4;
+
+    // Channel is 4 least significant bits of first byte
+    let channel: u8 = first_byte & 0x0F;
+
+    return match status {
+        0b1000 => Some(MidiMessage::NoteOff {
             channel,
             key: *bytes.get(1)? & 0x7Fu8,
             velocity: *bytes.get(2)? & 0x7Fu8,
         }),
 
-        Some(ChannelMessageType::NoteOn) => Some(MidiMessage::NoteOn {
+        0b1001 => Some(MidiMessage::NoteOn {
             channel,
             key: *bytes.get(1)? & 0x7Fu8,
             velocity: *bytes.get(2)? & 0x7Fu8,
         }),
 
-        Some(ChannelMessageType::PolyAftertouch) => Some(MidiMessage::PolyAftertouch {
+        0b1010 => Some(MidiMessage::PolyAftertouch {
             channel,
             key: *bytes.get(1)? & 0x7Fu8,
             value: *bytes.get(2)? & 0x7Fu8,
         }),
 
-        Some(ChannelMessageType::ControlChange) => Some(MidiMessage::ControlChange {
+        0b1011 => Some(MidiMessage::ControlChange {
             channel,
             control: *bytes.get(1)? & 0x7Fu8,
             value: *bytes.get(2)? & 0x7Fu8,
         }),
 
-        Some(ChannelMessageType::ProgramChange) => Some(MidiMessage::ProgramChange {
+        0b1100 => Some(MidiMessage::ProgramChange {
             channel,
             program: *bytes.get(1)? & 0x7Fu8,
         }),
 
-        Some(ChannelMessageType::ChannelAfterTouch) => Some(MidiMessage::ChannelAftertouch {
+        0b1101 => Some(MidiMessage::ChannelAftertouch {
             channel,
             value: *bytes.get(1)? & 0x7Fu8,
         }),
 
-        Some(ChannelMessageType::PitchBendChange) => Some(MidiMessage::PitchBendChange {
+        0b1110 => Some(MidiMessage::PitchBendChange {
             channel,
-            value: ((*bytes.get(1)? & 0b01111111u8) as u16)
-                | (((*bytes.get(2)? as u16 & 0b01111111u16) << 7) as u16),
+            value: ((*bytes.get(1)? as u16 & 0x7Fu16) as u16)
+                | (((*bytes.get(2)? as u16 & 0x7Fu16) << 7) as u16),
         }),
 
-        Some(ChannelMessageType::System) => Some(MidiMessage::Other),
-        None => None,
-    };
+        0b1111 => Some(MidiMessage::Other),
+
+        _ => None
+    }
 }
 
 #[cfg(test)]
