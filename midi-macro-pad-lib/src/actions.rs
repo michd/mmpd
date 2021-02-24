@@ -1,5 +1,6 @@
 use crate::keyboard_control::{self, KeyboardControlAdapter};
 use std::process::Command;
+use mockall::predicate::*;
 
 /// Action run in response to a MIDI event
 /// Any Action value can be run through ActionRunner::run.
@@ -51,6 +52,12 @@ impl ActionRunner {
     pub fn new() -> Option<ActionRunner> {
         Some(ActionRunner {
             kb_adapter: keyboard_control::get_adapter()?
+        })
+    }
+
+    fn test_new(kb_adapter: Box<dyn KeyboardControlAdapter>) -> Option<ActionRunner> {
+        Some(ActionRunner {
+            kb_adapter
         })
     }
 
@@ -124,5 +131,101 @@ impl ActionRunner {
 
 #[cfg(test)]
 mod tests {
-    // TODO: add a mocking library to test actions
+    use crate::actions::{ActionRunner, Action, DELAY_BETWEEN_KEYS_US};
+    use crate::keyboard_control::adapters::MockKeyboardControlAdapter;
+    use mockall::predicate::eq;
+
+    #[test]
+    fn runs_single_key_sequence() {
+        let mut mock_keyb_adapter = MockKeyboardControlAdapter::new();
+
+        mock_keyb_adapter.expect_send_keysequence()
+            .with(eq("ctrl+alt+delete"), eq(DELAY_BETWEEN_KEYS_US))
+            .times(1)
+            .returning(|_, _| ());
+
+        let runner = ActionRunner::test_new(
+            Box::new(mock_keyb_adapter)
+        ).unwrap();
+
+
+        runner.run(&Action::KeySequence("ctrl+alt+delete", 1));
+    }
+
+    #[test]
+    fn runs_repeated_key_sequences() {
+        let mut mock_keyb_adapter = MockKeyboardControlAdapter::new();
+
+        mock_keyb_adapter.expect_send_keysequence()
+            .with(eq("Tab"), eq(DELAY_BETWEEN_KEYS_US))
+            .times(3)
+            .returning(|_, _| ());
+
+        let runner = ActionRunner::test_new(
+            Box::new(mock_keyb_adapter)
+        ).unwrap();
+
+        runner.run(&Action::KeySequence("Tab", 3));
+    }
+
+    #[test]
+    fn runs_single_send_text() {
+        let mut mock_keyb_adapter = MockKeyboardControlAdapter::new();
+
+        mock_keyb_adapter.expect_send_text()
+            .with(eq("hello"), eq(DELAY_BETWEEN_KEYS_US))
+            .times(1)
+            .returning(|_, _| ());
+
+        let runner = ActionRunner::test_new(
+            Box::new(mock_keyb_adapter)
+        ).unwrap();
+
+        runner.run(&Action::EnterText("hello", 1));
+    }
+
+    #[test]
+    fn runs_repeated_send_text() {
+        let mut mock_keyb_adapter = MockKeyboardControlAdapter::new();
+
+        mock_keyb_adapter.expect_send_text()
+            .with(eq("hello"), eq(DELAY_BETWEEN_KEYS_US))
+            .times(3)
+            .returning(|_, _| ());
+
+        let runner = ActionRunner::test_new(
+            Box::new(mock_keyb_adapter)
+        ).unwrap();
+
+        runner.run(&Action::EnterText("hello", 3));
+    }
+
+    #[test]
+    fn runs_combination_action() {
+        let mut mock_keyb_adapter = MockKeyboardControlAdapter::new();
+
+        mock_keyb_adapter.expect_send_keysequence()
+            .with(eq("ctrl+shift+Tab"), eq(DELAY_BETWEEN_KEYS_US))
+            .times(2)
+            .returning(|_, _| ());
+
+        mock_keyb_adapter.expect_send_text()
+            .with(eq("hello"), eq(DELAY_BETWEEN_KEYS_US))
+            .times(3)
+            .returning(|_, _| ());
+
+        let runner = ActionRunner::test_new(
+            Box::new(mock_keyb_adapter)
+        ).unwrap();
+
+        runner.run(&Action::Combination(vec![
+            Action::KeySequence("ctrl+shift+Tab", 2),
+            Action::EnterText("hello", 3)
+        ]));
+    }
+
+    // TODO: convert shell actions so they're run through a dependency-injected
+    // component as well, to allow making them testable too. This can be done by
+    // simply making a pass-through API of sorts, perhaps private to the actions
+    // module.
 }

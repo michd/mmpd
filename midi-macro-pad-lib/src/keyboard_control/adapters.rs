@@ -1,5 +1,5 @@
 use crate::keyboard_control::adapters::xdo::Xdo;
-
+use mockall::*;
 mod xdo;
 
 /// Provides an adapter implementing KeyboardControlAdapter based on platform
@@ -17,6 +17,7 @@ pub fn get_adapter() -> Option<Box<dyn KeyboardControlAdapter>> {
 
 /// Adapters implementing this trait can send key sequences and text as if they were entered on
 /// a keyboard.
+#[automock]
 pub trait KeyboardControlAdapter {
     /// Sends a sequence of keys with a delay between keys specified by delay_microsecs.
     /// Format for the sequence is that of X Keysyms.

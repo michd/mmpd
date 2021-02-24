@@ -7,3 +7,6 @@ edition = "2018"
 [dependencies]
 midir = "^0.7.0"
 libxdo = "^0.6"
+
+[dev-dependencies]
+mockall = "0.9.1"
