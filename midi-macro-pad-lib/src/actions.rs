@@ -1,5 +1,5 @@
 use crate::keyboard_control::{self, KeyboardControlAdapter};
-use std::process::Command;
+use crate::shell::{Shell, ShellImpl};
 use mockall::predicate::*;
 
 /// Action run in response to a MIDI event
@@ -43,7 +43,8 @@ const DELAY_BETWEEN_KEYS_US: u32 = 100;
 
 /// Struct to give access to running Actions
 pub struct ActionRunner {
-    kb_adapter: Box<dyn KeyboardControlAdapter>
+    kb_adapter: Box<dyn KeyboardControlAdapter>,
+    shell_adapter: Box<dyn Shell>
 }
 
 impl ActionRunner {
@@ -51,13 +52,18 @@ impl ActionRunner {
     /// If no keyboard_control adapter can be obtained, returns None.
     pub fn new() -> Option<ActionRunner> {
         Some(ActionRunner {
-            kb_adapter: keyboard_control::get_adapter()?
+            kb_adapter: keyboard_control::get_adapter()?,
+            shell_adapter: Box::new(ShellImpl::new())
         })
     }
 
-    fn test_new(kb_adapter: Box<dyn KeyboardControlAdapter>) -> Option<ActionRunner> {
+    fn test_new(
+        kb_adapter: Box<dyn KeyboardControlAdapter>,
+        shell_adapter: Box<dyn Shell>
+    ) -> Option<ActionRunner> {
         Some(ActionRunner {
-            kb_adapter
+            kb_adapter,
+            shell_adapter
         })
     }
 
@@ -102,30 +108,13 @@ impl ActionRunner {
         args: Option<Vec<&str>>,
         env_vars: Option<Vec<(&str, &str)>>
     ) {
-        let mut cmd = Command::new(command);
-
         // TODO: it would be good to be able to substitute certain patterns in any of the strings
         // used in these commands. Substitutable values would essentially include any parameter that
         // was involved in leading to this action being run. That is, any parameters of the
         // MidiMessage, and perhaps access to the whole of the Midi state being stored in memory.
         // This needs further working out to get sensible var names.
 
-        // Attach any arguments
-        if let Some(args) = args {
-            for arg in args.iter() {
-                cmd.arg(arg);
-            }
-        }
-
-        // Attach any environment variables
-        if let Some(env_vars) = env_vars {
-            for (env_key, env_val) in env_vars {
-                cmd.env(env_key, env_val);
-            }
-        }
-
-        // Run
-        let _ = cmd.status();
+        self.shell_adapter.execute(command, args, env_vars);
     }
 }
 
@@ -133,7 +122,43 @@ impl ActionRunner {
 mod tests {
     use crate::actions::{ActionRunner, Action, DELAY_BETWEEN_KEYS_US};
     use crate::keyboard_control::adapters::MockKeyboardControlAdapter;
+    use crate::shell::{Shell, MockShell};
     use mockall::predicate::eq;
+    use crate::keyboard_control::KeyboardControlAdapter;
+
+    /// Helper struct to make setting up an ActionRunner for tests slightly
+    /// less of a hassle, having to provide only te dependencies that we want to
+    /// look into.
+    struct ActionRunnerBuilder {
+        kb_adapter: Option<Box<dyn KeyboardControlAdapter>>,
+        shell_adapter: Option<Box<dyn Shell>>
+    }
+
+    impl ActionRunnerBuilder {
+        fn new() -> ActionRunnerBuilder {
+            ActionRunnerBuilder {
+                kb_adapter: None,
+                shell_adapter: None
+            }
+        }
+
+        fn set_keyboard_adapter(mut self, kb_adapter: Box<dyn KeyboardControlAdapter>) -> Self {
+            self.kb_adapter = Some(kb_adapter);
+            self
+        }
+
+        fn set_shell_adapter(mut self, shell_adapter: Box<dyn Shell>) -> Self {
+            self.shell_adapter = Some(shell_adapter);
+            self
+        }
+
+        fn into_runner(self) -> ActionRunner {
+            ActionRunner::test_new(
+                self.kb_adapter.unwrap_or(Box::new(MockKeyboardControlAdapter::new())),
+                self.shell_adapter.unwrap_or(Box::new(MockShell::new()))
+            ).unwrap()
+        }
+    }
 
     #[test]
     fn runs_single_key_sequence() {
@@ -142,12 +167,11 @@ mod tests {
         mock_keyb_adapter.expect_send_keysequence()
             .with(eq("ctrl+alt+delete"), eq(DELAY_BETWEEN_KEYS_US))
             .times(1)
-            .returning(|_, _| ());
+            .return_const(());
 
-        let runner = ActionRunner::test_new(
-            Box::new(mock_keyb_adapter)
-        ).unwrap();
-
+        let runner = ActionRunnerBuilder::new()
+            .set_keyboard_adapter(Box::new(mock_keyb_adapter))
+            .into_runner();
 
         runner.run(&Action::KeySequence("ctrl+alt+delete", 1));
     }
@@ -159,11 +183,11 @@ mod tests {
         mock_keyb_adapter.expect_send_keysequence()
             .with(eq("Tab"), eq(DELAY_BETWEEN_KEYS_US))
             .times(3)
-            .returning(|_, _| ());
+            .return_const(());
 
-        let runner = ActionRunner::test_new(
-            Box::new(mock_keyb_adapter)
-        ).unwrap();
+        let runner = ActionRunnerBuilder::new()
+            .set_keyboard_adapter(Box::new(mock_keyb_adapter))
+            .into_runner();
 
         runner.run(&Action::KeySequence("Tab", 3));
     }
@@ -175,11 +199,11 @@ mod tests {
         mock_keyb_adapter.expect_send_text()
             .with(eq("hello"), eq(DELAY_BETWEEN_KEYS_US))
             .times(1)
-            .returning(|_, _| ());
+            .return_const(());
 
-        let runner = ActionRunner::test_new(
-            Box::new(mock_keyb_adapter)
-        ).unwrap();
+        let runner = ActionRunnerBuilder::new()
+            .set_keyboard_adapter(Box::new(mock_keyb_adapter))
+            .into_runner();
 
         runner.run(&Action::EnterText("hello", 1));
     }
@@ -191,11 +215,11 @@ mod tests {
         mock_keyb_adapter.expect_send_text()
             .with(eq("hello"), eq(DELAY_BETWEEN_KEYS_US))
             .times(3)
-            .returning(|_, _| ());
+            .return_const(());
 
-        let runner = ActionRunner::test_new(
-            Box::new(mock_keyb_adapter)
-        ).unwrap();
+        let runner = ActionRunnerBuilder::new()
+            .set_keyboard_adapter(Box::new(mock_keyb_adapter))
+            .into_runner();
 
         runner.run(&Action::EnterText("hello", 3));
     }
@@ -214,9 +238,9 @@ mod tests {
             .times(3)
             .returning(|_, _| ());
 
-        let runner = ActionRunner::test_new(
-            Box::new(mock_keyb_adapter)
-        ).unwrap();
+        let runner = ActionRunnerBuilder::new()
+            .set_keyboard_adapter(Box::new(mock_keyb_adapter))
+            .into_runner();
 
         runner.run(&Action::Combination(vec![
             Action::KeySequence("ctrl+shift+Tab", 2),
@@ -224,8 +248,70 @@ mod tests {
         ]));
     }
 
-    // TODO: convert shell actions so they're run through a dependency-injected
-    // component as well, to allow making them testable too. This can be done by
-    // simply making a pass-through API of sorts, perhaps private to the actions
-    // module.
+    #[test]
+    fn runs_shell_actions() {
+        let mut mock_shell = MockShell::new();
+
+        // TODO: Currently this checks only if paramaters are passed through as they came.
+        // Later we will want to process some input event-related variables by doing string
+        // substitution in arguments / env vars. At that point a unit tests for this
+        // functionality becomes actually useful.
+
+        // TODO: this format of test with Mockall does not show very useful
+        // output when it fails; room for improvement.
+        mock_shell.expect_execute()
+            .withf(|cmd, args, env_vars| {
+                let expected_cmd = "test_cmd";
+                let expected_args = Some(vec!["arg1", "arg2"]);
+                let expected_env_vars = Some(vec![("key1", "val1"), ("key2", "val2")]);
+
+                cmd == expected_cmd
+                    && do_opt_vecs_match(args, &expected_args)
+                    && do_opt_vecs_match(env_vars, &expected_env_vars)
+            })
+            .times(1)
+            .return_const(());
+
+        let runner = ActionRunnerBuilder::new()
+            .set_shell_adapter(Box::new(mock_shell))
+            .into_runner();
+
+        runner.run(&Action::Shell {
+            command: "test_cmd",
+            args: Some(vec!["arg1", "arg2"]),
+            env_vars: Some(vec![("key1", "val1"), ("key2", "val2")])
+        });
+    }
+
+    // Helper function to see if two vectors are identical
+    // TODO: perhaps move to some test util module.
+    fn do_vecs_match<T: PartialEq>(a: &Vec<T>, b: &Vec<T>) -> bool {
+        if a.len() != b.len() {
+            return false;
+        }
+
+        for (a, b) in a.iter().zip(b.iter()) {
+            if a != b {
+                return false
+            }
+        }
+
+        true
+    }
+
+    fn do_opt_vecs_match<T: PartialEq>(a: &Option<Vec<T>>, b: &Option<Vec<T>>) -> bool {
+        if let None = a {
+            return if let None = b {
+                true
+            } else {
+                false
+            }
+        }
+
+        if let None = b {
+            return false
+        }
+
+        do_vecs_match(&a.as_ref().unwrap(), &b.as_ref().unwrap())
+    }
 }
