@@ -120,7 +120,7 @@ impl ActionRunner {
 
 #[cfg(test)]
 mod tests {
-    use crate::actions::{ActionRunner, Action, DELAY_BETWEEN_KEYS_US};
+    use crate::macros::actions::{ActionRunner, Action, DELAY_BETWEEN_KEYS_US};
     use crate::keyboard_control::adapters::MockKeyboardControlAdapter;
     use crate::shell::{Shell, MockShell};
     use mockall::predicate::eq;

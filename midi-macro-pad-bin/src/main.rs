@@ -2,7 +2,7 @@ use std::vec::Vec;
 use std::env;
 use midi_macro_pad_lib::midi::{self, MidiMessage};
 use midi_macro_pad_lib::focus;
-use midi_macro_pad_lib::actions::{Action, ActionRunner};
+use midi_macro_pad_lib::macros::actions::{Action, ActionRunner};
 
 fn main() {
     println!("MIDI Macro Pad starting.");

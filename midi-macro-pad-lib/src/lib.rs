@@ -6,5 +6,5 @@
 pub mod midi;
 pub mod focus;
 pub mod keyboard_control;
-pub mod actions;
+pub mod macros;
 mod shell;
