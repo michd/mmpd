@@ -1,12 +1,13 @@
 # Configuration
 
-**Note: At this time, none of what's documented in here is documented yet, in that there isn't even a configuration file
-loading facility. It is documented here mainly as a specification to work towards with the implementation, after which it
-will serve as part of the manual.**
+**Note: At this time, none of what's documented in here is implemented yet, in that there isn't even a configuration
+file loading facility. It is documented here mainly as a specification to work towards with the implementation, after
+which it will serve as part of the manual.**
 
 ---
 
-MIDI-Macro-Pad is configured with a single JSON file specifying events and conditions that need to happen in order to run specified actions.
+MIDI-Macro-Pad is configured with a single JSON file specifying events and conditions that need to happen in order to
+run specified actions.
 
 At the top level, the file has two properties, and looks like this:
 ```json
@@ -17,9 +18,9 @@ At the top level, the file has two properties, and looks like this:
 }
 ```
 
-- `version`: Configuration file format version. Instructs the program what to expect. This is included from the beginning 
-  in case a future version introduced such a big overhaul that the configuration files would become incompatible.
-  Including it means the program will always know what to expect, and prevents breaking changes.
+- `version`: Configuration file format version. Instructs the program what to expect. This is included from the
+  beginning in case a future version introduced such a big overhaul that the configuration files would become
+  incompatible. Including it means the program will always know what to expect, and prevents breaking changes.
 
 - `macros`: Array of macro objects, specified below.
 
@@ -141,8 +142,8 @@ values for that parameter.
 
 For MIDI value ranging, there are two distinct types of values.
 
-- `message_type`: The value specified for this field must always be a single, quoted string, matching one supported values
-  exactly. Any other value that cannot be interpreted is an error.
+- `message_type`: The value specified for this field must always be a single, quoted string, matching one supported
+  values exactly. Any other value that cannot be interpreted is an error.
 - All other fields: Everything else is numeric (positive integers). They may be omitted or set to `null` (without any
   quotes) to match any value.
   
@@ -160,8 +161,8 @@ Finally, you can mix the two: `"key": [12, 14, {"min": 32, "max": 44}]` will mat
 
 ### Preconditions
 
-A precondition is something that must be satisfied before an a macro is allowed to run. These are based on state data the
-program keeps track of.
+A precondition is something that must be satisfied before an a macro is allowed to run. These are based on state data
+the program keeps track of.
 
 A precondition is structured as follows:
 
@@ -279,9 +280,9 @@ Key sequence actions allow you to enter a keyboard shortcut once or more. A full
 }
 ```
 
-- `sequence`: Required. A string representing the key combination. Key symbols are those from X Keysyms. A list may be found in
-  the X11 source code file for [keysymdef.h](https://code.woboq.org/kde/include/X11/keysymdef.h.html). The symbols to
-  use are the `XK_` prefixed ones, albeit without the prefix.
+- `sequence`: Required. A string representing the key combination. Key symbols are those from X Keysyms. A list may be
+  found in the X11 source code file for [keysymdef.h](https://code.woboq.org/kde/include/X11/keysymdef.h.html).
+  The symbols to use are the `XK_`-prefixed ones, without that prefix.
 - `count`: Optional, defaults to 1. How many times to repeat entering this sequence.
 
 #### enter_text
