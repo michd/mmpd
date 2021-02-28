@@ -1,8 +1,10 @@
 use std::vec::Vec;
 use std::env;
-use midi_macro_pad_lib::midi::{self, MidiMessage};
+use midi_macro_pad_lib::midi;
 use midi_macro_pad_lib::focus;
 use midi_macro_pad_lib::macros::actions::{Action, ActionRunner};
+use midi_macro_pad_lib::macros::event_matching::{MatchChecker};
+use midi_macro_pad_lib::macros::event_matching::midi::{MidiEventMatcher, NumberMatcher};
 
 fn main() {
     println!("MIDI Macro Pad starting.");
@@ -112,40 +114,68 @@ fn task_listen(port_pattern: Option<&String>) -> () {
 
     let ctrl_c = Action::KeySequence("ctrl+c", 1);
 
+    let inkscape_matcher = MidiEventMatcher::NoteOn {
+        channel_match: Some(NumberMatcher::Val(0)),
+        key_match: Some(NumberMatcher::Val(48)),
+        velocity_match: None
+    };
+
+    let hello_world_matcher = MidiEventMatcher::NoteOn {
+        channel_match: Some(NumberMatcher::Val(0)),
+        key_match: Some(NumberMatcher::Val(60)),
+        velocity_match: Some(NumberMatcher::Range { min: Some(63), max: None })
+    };
+
+    let ctrl_c_matcher = MidiEventMatcher::NoteOn {
+        channel_match: Some(NumberMatcher::Val(0)),
+        key_match: Some(NumberMatcher::Val(61)),
+        velocity_match: None
+    };
+
+    let focus_info_matcher = MidiEventMatcher::NoteOff {
+        channel_match: Some(NumberMatcher::Val(0)),
+        key_match: Some(NumberMatcher::Val(62)),
+        velocity_match: None
+    };
+
+    let stop_matcher = MidiEventMatcher::ControlChange {
+        channel_match: None,
+        control_match: Some(NumberMatcher::Val(51)),
+        value_match: Some(NumberMatcher::Val(127))
+    };
+
     for msg in rx {
         println!("{:?}", msg);
 
-        if let MidiMessage::NoteOff { channel: _, key, velocity: _ } = msg {
-            match key {
-                // Some hardcoded test actions for now
-                48 => {
-                    // TODO: handle None
-                    let fw = focus_adapter.get_focused_window().unwrap();
-                    if fw.window_name.ends_with("Inkscape") {
-                        println!("in inkscape, executing centre on vertical axis.");
-                        action_runner.run(&inkscape_center_vertical);
-                    } else {
-                        println!("not in inkscape, doing nothing.");
-                    }
-                }
-
-                60 => action_runner.run(&type_hello_world),
-
-                61 => action_runner.run(&ctrl_c),
-
-                62 => {
-                    let fw = focus_adapter.get_focused_window();
-                    println!("focused window: {:?}", fw);
-                }
-
-                _ => {
-                    println!("no action configured");
-                }
+        if inkscape_matcher.matches(&msg) {
+            let fw = focus_adapter.get_focused_window().unwrap();
+            if fw.window_name.ends_with("Inkscape") {
+                println!("in inkscape, executing centre on vertical axis.");
+                action_runner.run(&inkscape_center_vertical);
+            } else {
+                println!("not in inkscape, doing nothing.");
             }
+
+            continue;
         }
 
-        // "Stop" button on Arturia Keystep, exit the program
-        if let MidiMessage::ControlChange { channel: _, control: 51, value: 127 } = msg {
+        if hello_world_matcher.matches(&msg) {
+            action_runner.run(&type_hello_world);
+            continue;
+        }
+
+        if ctrl_c_matcher.matches(&msg) {
+            action_runner.run(&ctrl_c);
+            continue;
+        }
+
+        if focus_info_matcher.matches(&msg) {
+            let fw = focus_adapter.get_focused_window();
+            println!("focused window: {:?}", fw);
+            continue;
+        }
+
+        if stop_matcher.matches(&msg) {
             midi_adapter.stop_listening();
         }
     }

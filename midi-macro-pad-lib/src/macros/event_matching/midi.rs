@@ -1,7 +1,7 @@
 use crate::macros::event_matching::{EventType, MatchChecker};
 use crate::midi::MidiMessage;
 
-enum NumberMatcher {
+pub enum NumberMatcher {
     Any,
     Range { min: Option<u32>, max: Option<u32> },
     Val(u32),
@@ -52,7 +52,7 @@ impl MatchChecker<u32> for NumMatch {
     }
 }
 
-enum MidiEventMatcher {
+pub enum MidiEventMatcher {
     NoteOn { channel_match: NumMatch, key_match: NumMatch, velocity_match: NumMatch },
     NoteOff { channel_match: NumMatch, key_match: NumMatch, velocity_match: NumMatch },
     PolyAftertouch { channel_match: NumMatch, key_match: NumMatch, value_match: NumMatch },

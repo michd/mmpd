@@ -56,6 +56,7 @@ impl ActionRunner {
         })
     }
 
+    #[cfg(test)]
     fn test_new(
         kb_adapter: Box<dyn KeyboardControlAdapter>,
         shell_adapter: Box<dyn Shell>
