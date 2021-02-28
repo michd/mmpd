@@ -1,10 +1,12 @@
-use mockall::*;
 use std::process::Command;
+
+#[cfg(test)]
+use mockall::automock;
 
 /// Wrapper for executing shell commands, really a single-method
 /// interface for std::process::Command. Exists mainly to facilitate
 /// mocking in unit tests.
-#[automock]
+#[cfg_attr(test, automock)]
 pub(crate) trait Shell {
     fn execute<'a>(
         &self,

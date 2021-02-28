@@ -1,6 +1,5 @@
 use crate::keyboard_control::{self, KeyboardControlAdapter};
 use crate::shell::{Shell, ShellImpl};
-use mockall::predicate::*;
 
 /// Action run in response to a MIDI event
 /// Any Action value can be run through ActionRunner::run.
