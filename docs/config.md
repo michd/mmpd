@@ -13,7 +13,11 @@ At the top level, the file has two properties, and looks like this:
 ```json
 {
   "version": 1,
-  "macros": [
+  
+  "scopes": [
+  ],
+  
+  "global_macros": [
   ]
 }
 ```
@@ -21,8 +25,38 @@ At the top level, the file has two properties, and looks like this:
 - `version`: Configuration file format version. Instructs the program what to expect. This is included from the
   beginning in case a future version introduced such a big overhaul that the configuration files would become
   incompatible. Including it means the program will always know what to expect, and prevents breaking changes.
+- `scopes`: Array of application scopes, each with its own array of macros.
+- `global_macros`: Array of macros, which can run regardless of which application is focused.
 
-- `macros`: Array of macro objects, specified below.
+## Scopes
+
+A scope consists of a pattern to match a focused application window's title and/or window class, and an array of
+associated macros that only apply if a window matching the pattern is currently focused. A scope looks like this:
+
+```json
+{
+  "window_class": { "is": "exact text" },
+  "window_name": { "contains": "partial text" },
+  "macros": [    
+  ]
+}
+```
+
+- `window_class`: matches against a window class of the focused window. The matching object is documented below, see
+  string matching.
+- `window_name`: matches against a window name of the focused window. Matching works the same.
+- `macros`: List of macros that apply to this scope, documented in Macros.
+
+### String matching
+
+A string matching object can take several forms, all consisting of one key and a string value. The key determines how
+the specified pattern gets used against the string being compared.
+
+- `{ "is": "pattern" }`: Value must be exactly the same as the pattern string specified
+- `{ "contains": "pattern" }`: Value must contain all of the pattern string.
+- `{ "start_with": "pattern" }`: Value must begin with the pattern string.
+- `{ "ends_with": "pattern" }`: Value must end with the pattern string.
+- `{ "regex": "pattern" }`: Value must match the regular expression in pattern.
 
 ## Macros
 
@@ -390,7 +424,34 @@ Other top level namespaces may be added to expose more available data, or provid
 ```json
 {
   "version": 1,
-  "macros": [
+  
+  "scopes": [
+    {
+      "window_class": { "contains": "gedit" },
+      "window_name": null,
+      "macros": [
+        {
+          "matching_events": [
+            {
+              "type": "midi",
+              "data": {
+                "message_type": "note_on",
+                "key": 33
+              }
+            }
+          ],
+          "actions": [
+            {
+              "type": "key_sequence",
+              "data": { "sequence": "ctrl+t" }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  
+  "global_macros": [
     {
       "matching_events": [
         {
@@ -412,7 +473,7 @@ Other top level namespaces may be added to expose more available data, or provid
             "condition_type": "control",
             "channel": 1,
             "control": 42,
-            "value": { "max": 32 }            
+            "value": { "max": 32 }
           }
         }
       ],
@@ -430,7 +491,10 @@ Other top level namespaces may be added to expose more available data, or provid
 }
 ```
 
-This example specifies a single macro, responding to a note_on event on MIDI channel 1, for specifically key 32, if
+This example specifies a scope for gedit, a text editor, in which it will enter the sequence "ctrl+t" when key 33 is
+pressed, regardless of channel or velocity.
+
+Further, it specified a global macro, responding to a note_on event on MIDI channel 1, for specifically key 32, if
 the velocity is 64 or higher. In order to run, control 42 on MIDI channel 1 must be known and set to no higher than 32.
 
 It types the text "Hello world!" twice in the focused program.
