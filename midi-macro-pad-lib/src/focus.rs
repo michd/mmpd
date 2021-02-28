@@ -2,7 +2,6 @@ mod adapters;
 
 pub use adapters::get_adapter;
 
-
 /// Container struct for window info
 #[derive(Debug)]
 pub struct FocusedWindow {

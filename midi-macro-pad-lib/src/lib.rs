@@ -8,3 +8,4 @@ pub mod focus;
 pub mod keyboard_control;
 pub mod macros;
 mod shell;
+pub mod match_checker;

@@ -1,10 +1,11 @@
-use std::vec::Vec;
 use std::env;
-use midi_macro_pad_lib::midi;
+use std::vec::Vec;
+
 use midi_macro_pad_lib::focus;
 use midi_macro_pad_lib::macros::actions::{Action, ActionRunner};
-use midi_macro_pad_lib::macros::event_matching::{MatchChecker};
-use midi_macro_pad_lib::macros::event_matching::midi::{MidiEventMatcher, NumberMatcher};
+use midi_macro_pad_lib::macros::event_matching::midi::MidiEventMatcher;
+use midi_macro_pad_lib::match_checker::{MatchChecker, NumberMatcher};
+use midi_macro_pad_lib::midi;
 
 fn main() {
     println!("MIDI Macro Pad starting.");

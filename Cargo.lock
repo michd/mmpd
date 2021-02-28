@@ -209,6 +209,7 @@ dependencies = [
  "libxdo",
  "midir",
  "mockall",
+ "regex",
 ]
 
 [[package]]

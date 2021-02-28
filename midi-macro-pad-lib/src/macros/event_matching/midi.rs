@@ -1,56 +1,5 @@
-use crate::macros::event_matching::{EventType, MatchChecker};
+use crate::match_checker::{MatchChecker, NumMatch};
 use crate::midi::MidiMessage;
-
-pub enum NumberMatcher {
-    Any,
-    Range { min: Option<u32>, max: Option<u32> },
-    Val(u32),
-    List(Vec<NumberMatcher>),
-}
-
-type NumMatch = Option<NumberMatcher>;
-
-impl MatchChecker<u32> for NumberMatcher {
-    fn matches(&self, input_num: u32) -> bool {
-        match self {
-            NumberMatcher::Any => true,
-
-            NumberMatcher::Range { min, max } => {
-                let mut match_so_far = true;
-
-                if let Some(min) = min {
-                    match_so_far = input_num >= *min;
-                }
-
-                if !match_so_far {
-                    return false;
-                }
-
-                if let Some(max) = max {
-                    match_so_far = input_num <= *max
-                }
-
-                match_so_far
-            }
-
-            NumberMatcher::Val(a) => *a == input_num,
-
-            NumberMatcher::List(matchers) => {
-                matchers.iter().any(|m| m.matches(input_num))
-            }
-        }
-    }
-}
-
-impl MatchChecker<u32> for NumMatch {
-    fn matches(&self, val: u32) -> bool {
-        if let Some(matcher) = self {
-            matcher.matches(val)
-        } else {
-            true
-        }
-    }
-}
 
 pub enum MidiEventMatcher {
     NoteOn { channel_match: NumMatch, key_match: NumMatch, velocity_match: NumMatch },
@@ -64,8 +13,6 @@ pub enum MidiEventMatcher {
 
 // TODO: something that takes the generic format of a midi event matcher (with
 // strings and arrays etc) into a MidiEventMatcher value
-
-const EVENT_TYPE: &str = "midi";
 
 impl MatchChecker<&MidiMessage> for MidiEventMatcher {
     fn matches(&self, val: &MidiMessage) -> bool {
@@ -154,105 +101,13 @@ impl MatchChecker<&MidiMessage> for MidiEventMatcher {
         }
     }
 }
-impl EventType<&MidiMessage> for MidiEventMatcher {
-    fn get_type(&self) -> &str {
-        return EVENT_TYPE
-    }
-}
 
 #[cfg(test)]
 mod tests {
-    use crate::macros::event_matching::midi::{NumberMatcher, MatchChecker, MidiEventMatcher};
+    use crate::macros::event_matching::midi::MidiEventMatcher;
+    use crate::match_checker::{MatchChecker, NumberMatcher};
     use crate::midi::MidiMessage;
 
-    #[test]
-    fn number_matcher_any() {
-        let matcher = NumberMatcher::Any;
-
-        assert!(matcher.matches(0));
-        assert!(matcher.matches(545));
-        assert!(matcher.matches(545646546));
-    }
-
-    #[test]
-    fn number_matcher_range() {
-        let min_matcher = NumberMatcher::Range { min: Some(9), max: None };
-
-        assert!(min_matcher.matches(9));
-        assert!(min_matcher.matches(u32::MAX));
-        assert!(!min_matcher.matches(8));
-        assert!(!min_matcher.matches(2));
-        assert!(!min_matcher.matches(u32::MIN));
-
-        let max_matcher = NumberMatcher::Range { min: None, max: Some(12) };
-
-        assert!(max_matcher.matches(12));
-        assert!(max_matcher.matches(u32::MIN));
-        assert!(!max_matcher.matches(13));
-        assert!(!max_matcher.matches(25648));
-        assert!(!max_matcher.matches(u32::MAX));
-
-        let range_matcher = NumberMatcher::Range { min: Some(42), max: Some(9001) };
-
-        assert!(range_matcher.matches(42));
-        assert!(range_matcher.matches(5555));
-        assert!(range_matcher.matches(9001));
-        assert!(!range_matcher.matches(41));
-        assert!(!range_matcher.matches(24));
-        assert!(!range_matcher.matches(u32::MIN));
-        assert!(!range_matcher.matches(9002));
-        assert!(!range_matcher.matches(15000));
-        assert!(!range_matcher.matches(u32::MAX));
-
-        let all_matcher = NumberMatcher::Range { min: None, max: None };
-
-        assert!(all_matcher.matches(u32::MIN));
-        assert!(all_matcher.matches(847));
-        assert!(all_matcher.matches(u32::MAX));
-    }
-
-    #[test]
-    fn number_matcher_val() {
-        let matcher = NumberMatcher::Val(1234);
-
-        assert!(matcher.matches(1234));
-        assert!(!matcher.matches(1233));
-        assert!(!matcher.matches(1235));
-        assert!(!matcher.matches(u32::MIN));
-        assert!(!matcher.matches(u32::MAX));
-    }
-
-    #[test]
-    fn number_matcher_list() {
-        let matcher = NumberMatcher::List(vec![
-            NumberMatcher::Range { min: Some(10), max: Some(20) },
-            NumberMatcher::Range { min: Some(30), max: Some(40) },
-            NumberMatcher::Val(4242),
-            NumberMatcher::Val(5000),
-            NumberMatcher::Range { min: Some(9001), max: None }
-        ]);
-
-        assert!(!matcher.matches(u32::MIN));
-        assert!(!matcher.matches(7));
-        assert!(!matcher.matches(9));
-        assert!(matcher.matches(10));
-        assert!(matcher.matches(15));
-        assert!(matcher.matches(20));
-        assert!(!matcher.matches(21));
-        assert!(!matcher.matches(28));
-        assert!(!matcher.matches(29));
-        assert!(matcher.matches(30));
-        assert!(matcher.matches(35));
-        assert!(matcher.matches(40));
-        assert!(!matcher.matches(41));
-        assert!(!matcher.matches(2021));
-        assert!(matcher.matches(4242));
-        assert!(matcher.matches(5000));
-        assert!(!matcher.matches(7500));
-        assert!(matcher.matches(9001));
-        assert!(matcher.matches(424242));
-        assert!(matcher.matches(u32::MAX));
-    }
 
     #[test]
     fn midi_event_match_note_on() {
