@@ -14,7 +14,7 @@ pub enum MidiEventMatcher {
 // TODO: something that takes the generic format of a midi event matcher (with
 // strings and arrays etc) into a MidiEventMatcher value
 
-impl MatchChecker<&MidiMessage> for MidiEventMatcher {
+impl MatchChecker<MidiMessage> for MidiEventMatcher {
     fn matches(&self, val: &MidiMessage) -> bool {
         match self {
             MidiEventMatcher::NoteOn {
@@ -22,9 +22,9 @@ impl MatchChecker<&MidiMessage> for MidiEventMatcher {
             } => {
                 match val {
                     MidiMessage::NoteOn { channel, key, velocity } => {
-                        channel_match.matches(u32::from(*channel))
-                            && key_match.matches(u32::from(*key))
-                            && velocity_match.matches(u32::from(*velocity))
+                        channel_match.matches(&u32::from(*channel))
+                            && key_match.matches(&u32::from(*key))
+                            && velocity_match.matches(&u32::from(*velocity))
                     }
                     _ => false
                 }
@@ -35,9 +35,9 @@ impl MatchChecker<&MidiMessage> for MidiEventMatcher {
             } => {
                 match val {
                     MidiMessage::NoteOff { channel, key, velocity } => {
-                        channel_match.matches(u32::from(*channel))
-                            && key_match.matches(u32::from(*key))
-                            && velocity_match.matches(u32::from(*velocity))
+                        channel_match.matches(&u32::from(*channel))
+                            && key_match.matches(&u32::from(*key))
+                            && velocity_match.matches(&u32::from(*velocity))
                     }
                     _ => false
                 }
@@ -48,9 +48,9 @@ impl MatchChecker<&MidiMessage> for MidiEventMatcher {
             } => {
                 match val {
                     MidiMessage::PolyAftertouch { channel, key, value} => {
-                        channel_match.matches(u32::from(*channel))
-                            && key_match.matches(u32::from(*key))
-                            && value_match.matches(u32::from(*value))
+                        channel_match.matches(&u32::from(*channel))
+                            && key_match.matches(&u32::from(*key))
+                            && value_match.matches(&u32::from(*value))
                     }
                     _ => false
                 }
@@ -61,9 +61,9 @@ impl MatchChecker<&MidiMessage> for MidiEventMatcher {
             } => {
                 match val {
                     MidiMessage::ControlChange { channel, control, value } => {
-                        channel_match.matches(u32::from(*channel))
-                            && control_match.matches(u32::from(*control))
-                            && value_match.matches(u32::from(*value))
+                        channel_match.matches(&u32::from(*channel))
+                            && control_match.matches(&u32::from(*control))
+                            && value_match.matches(&u32::from(*value))
                     }
                     _ => false
                 }
@@ -72,8 +72,8 @@ impl MatchChecker<&MidiMessage> for MidiEventMatcher {
             MidiEventMatcher::ProgramChange { channel_match, program_match} => {
                 match val {
                     MidiMessage::ProgramChange { channel, program} => {
-                        channel_match.matches(u32::from(*channel))
-                            && program_match.matches(u32::from(*program))
+                        channel_match.matches(&u32::from(*channel))
+                            && program_match.matches(&u32::from(*program))
                     }
                     _ => false
                 }
@@ -82,8 +82,8 @@ impl MatchChecker<&MidiMessage> for MidiEventMatcher {
             MidiEventMatcher::ChannelAftertouch { channel_match, value_match} => {
                 match val {
                     MidiMessage::ChannelAftertouch { channel, value} => {
-                        channel_match.matches(u32::from(*channel))
-                            && value_match.matches(u32::from(*value))
+                        channel_match.matches(&u32::from(*channel))
+                            && value_match.matches(&u32::from(*value))
                     }
                     _ => false
                 }
@@ -92,8 +92,8 @@ impl MatchChecker<&MidiMessage> for MidiEventMatcher {
             MidiEventMatcher::PitchBendRange { channel_match, value_match } => {
                 match val {
                     MidiMessage::PitchBendChange { channel, value} => {
-                        channel_match.matches(u32::from(*channel))
-                            && value_match.matches(u32::from(*value))
+                        channel_match.matches(&u32::from(*channel))
+                            && value_match.matches(&u32::from(*value))
                     }
                     _ => false
                 }

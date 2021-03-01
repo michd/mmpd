@@ -3,21 +3,15 @@ use crate::midi::MidiMessage;
 
 pub mod midi;
 
-pub enum EventMatcher<'a> {
-    Midi(Box<dyn MatchChecker<&'a MidiMessage>>),
+pub enum EventMatcher {
+    Midi(Box<dyn MatchChecker<MidiMessage>>),
     Other
 }
 
 // Temporary dummy type as a placeholder
 type Precondition = bool;
 
-pub enum Event {
-    Midi {
-        data: MidiMessage,
-        required_preconditions: Option<Vec<Precondition>>
-    },
-
-    Other {
-        required_preconditions: Option<Vec<Precondition>>
-    }
+pub enum Event<'a> {
+    Midi(&'a MidiMessage),
+    Other
 }
