@@ -6,6 +6,8 @@ use midi_macro_pad_lib::macros::actions::{Action, ActionRunner};
 use midi_macro_pad_lib::macros::event_matching::midi::MidiEventMatcher;
 use midi_macro_pad_lib::match_checker::{MatchChecker, NumberMatcher};
 use midi_macro_pad_lib::midi;
+use midi_macro_pad_lib::macros::Macro;
+use midi_macro_pad_lib::macros::event_matching::{EventMatcher, Event};
 
 fn main() {
     println!("MIDI Macro Pad starting.");
@@ -105,39 +107,52 @@ fn task_listen(port_pattern: Option<&String>) -> () {
 
     let action_runner = action_runner.unwrap();
 
-    let inkscape_center_vertical = Action::Combination(vec![
-        Action::KeySequence("ctrl+shift+a", 1),
-        Action::KeySequence("Tab", 6),
-        Action::KeySequence("Return", 1),
-    ]);
+    let inkscape_macro = Macro::new(
+        vec![
+            Box::new(EventMatcher::Midi(
+                Box::new(MidiEventMatcher::NoteOn {
+                    channel_match: Some(NumberMatcher::Val(0)),
+                    key_match: Some(NumberMatcher::Val(48)),
+                    velocity_match: None
+                })
+            ))
+        ],
+        vec![
+            Action::KeySequence("ctrl+shift+a", 1),
+            Action::KeySequence("Tab", 6),
+            Action::KeySequence("Return", 1),
+        ]
+    );
 
-    let type_hello_world = Action::EnterText("Hello world!", 1);
+    let hello_world_macro = Macro::new(
+        vec![
+            Box::new(EventMatcher::Midi(
+                Box::new(MidiEventMatcher::NoteOn {
+                    channel_match: Some(NumberMatcher::Val(0)),
+                    key_match: Some(NumberMatcher::Val(60)),
+                    velocity_match: Some(NumberMatcher::Range { min: Some(63), max: None })
+                })
+            ))
+        ],
 
-    let ctrl_c = Action::KeySequence("ctrl+c", 1);
+        vec![Action::EnterText("Hello world!", 1)]
+    );
 
-    let inkscape_matcher = MidiEventMatcher::NoteOn {
-        channel_match: Some(NumberMatcher::Val(0)),
-        key_match: Some(NumberMatcher::Val(48)),
-        velocity_match: None
-    };
+    let ctrl_c_macro = Macro::new(
+        vec![
+            Box::new(EventMatcher::Midi(
+              Box::new(MidiEventMatcher::NoteOn {
+                  channel_match: Some(NumberMatcher::Val(0)),
+                  key_match: Some(NumberMatcher::Val(61)),
+                  velocity_match: None
+              })
+            ))
+        ],
 
-    let hello_world_matcher = MidiEventMatcher::NoteOn {
-        channel_match: Some(NumberMatcher::Val(0)),
-        key_match: Some(NumberMatcher::Val(60)),
-        velocity_match: Some(NumberMatcher::Range { min: Some(63), max: None })
-    };
+        vec![Action::KeySequence("ctrl+c", 1)]
+    );
 
-    let ctrl_c_matcher = MidiEventMatcher::NoteOn {
-        channel_match: Some(NumberMatcher::Val(0)),
-        key_match: Some(NumberMatcher::Val(61)),
-        velocity_match: None
-    };
-
-    let focus_info_matcher = MidiEventMatcher::NoteOff {
-        channel_match: Some(NumberMatcher::Val(0)),
-        key_match: Some(NumberMatcher::Val(62)),
-        velocity_match: None
-    };
+    let macro_list = vec![hello_world_macro, ctrl_c_macro];
 
     let stop_matcher = MidiEventMatcher::ControlChange {
         channel_match: None,
@@ -148,32 +163,30 @@ fn task_listen(port_pattern: Option<&String>) -> () {
     for msg in rx {
         println!("{:?}", msg);
 
-        if inkscape_matcher.matches(&msg) {
+        let event = Event::Midi(&msg);
+
+        if let Some(actions) = inkscape_macro.evaluate(&event) {
             let fw = focus_adapter.get_focused_window().unwrap();
-            if fw.window_name.ends_with("Inkscape") {
-                println!("in inkscape, executing centre on vertical axis.");
-                action_runner.run(&inkscape_center_vertical);
-            } else {
-                println!("not in inkscape, doing nothing.");
+            if !fw.window_name.ends_with("Inkscape") {
+                println!("Not in inkscape, skipping");
+                continue;
+            }
+            println!("in inkscape, executing macro");
+            for action in actions {
+                action_runner.run(action);
             }
 
             continue;
         }
 
-        if hello_world_matcher.matches(&msg) {
-            action_runner.run(&type_hello_world);
-            continue;
-        }
+        for macro_item in macro_list.iter() {
+            if let Some(actions) = macro_item.evaluate(&event) {
+                for action in actions {
+                    action_runner.run(action);
+                }
 
-        if ctrl_c_matcher.matches(&msg) {
-            action_runner.run(&ctrl_c);
-            continue;
-        }
-
-        if focus_info_matcher.matches(&msg) {
-            let fw = focus_adapter.get_focused_window();
-            println!("focused window: {:?}", fw);
-            continue;
+                break;
+            }
         }
 
         if stop_matcher.matches(&msg) {
