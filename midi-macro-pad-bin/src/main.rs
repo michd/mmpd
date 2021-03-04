@@ -1,12 +1,12 @@
 use std::env;
 use std::vec::Vec;
 
-use midi_macro_pad_lib::focus;
+use midi_macro_pad_lib::{focus, state};
 use midi_macro_pad_lib::macros::actions::{Action, ActionRunner};
 use midi_macro_pad_lib::macros::event_matching::midi::MidiEventMatcher;
-use midi_macro_pad_lib::match_checker::{MatchChecker, NumberMatcher};
+use midi_macro_pad_lib::match_checker::{MatchChecker, NumberMatcher, StringMatcher};
 use midi_macro_pad_lib::midi;
-use midi_macro_pad_lib::macros::Macro;
+use midi_macro_pad_lib::macros::{Macro, Scope};
 use midi_macro_pad_lib::macros::event_matching::{EventMatcher, Event};
 
 fn main() {
@@ -106,6 +106,12 @@ fn task_listen(port_pattern: Option<&String>) -> () {
     }
 
     let action_runner = action_runner.unwrap();
+    let state = state::new(focus_adapter);
+
+    let inkscape_scope = Scope::new(
+        None,
+        Some(StringMatcher::EndsWith("Inkscape"))
+    );
 
     let inkscape_macro = Macro::new(
         vec![
@@ -121,7 +127,9 @@ fn task_listen(port_pattern: Option<&String>) -> () {
             Action::KeySequence("ctrl+shift+a", 1),
             Action::KeySequence("Tab", 6),
             Action::KeySequence("Return", 1),
-        ]
+        ],
+
+        Some(&inkscape_scope)
     );
 
     let hello_world_macro = Macro::new(
@@ -135,7 +143,9 @@ fn task_listen(port_pattern: Option<&String>) -> () {
             ))
         ],
 
-        vec![Action::EnterText("Hello world!", 1)]
+        vec![Action::EnterText("Hello world!", 1)],
+
+        None
     );
 
     let ctrl_c_macro = Macro::new(
@@ -149,10 +159,12 @@ fn task_listen(port_pattern: Option<&String>) -> () {
             ))
         ],
 
-        vec![Action::KeySequence("ctrl+c", 1)]
+        vec![Action::KeySequence("ctrl+c", 1)],
+
+        None
     );
 
-    let macro_list = vec![hello_world_macro, ctrl_c_macro];
+    let macro_list = vec![inkscape_macro, hello_world_macro, ctrl_c_macro];
 
     let stop_matcher = MidiEventMatcher::ControlChange {
         channel_match: None,
@@ -165,22 +177,8 @@ fn task_listen(port_pattern: Option<&String>) -> () {
 
         let event = Event::Midi(&msg);
 
-        if let Some(actions) = inkscape_macro.evaluate(&event) {
-            let fw = focus_adapter.get_focused_window().unwrap();
-            if !fw.window_name.ends_with("Inkscape") {
-                println!("Not in inkscape, skipping");
-                continue;
-            }
-            println!("in inkscape, executing macro");
-            for action in actions {
-                action_runner.run(action);
-            }
-
-            continue;
-        }
-
         for macro_item in macro_list.iter() {
-            if let Some(actions) = macro_item.evaluate(&event) {
+            if let Some(actions) = macro_item.evaluate(&event, &state) {
                 for action in actions {
                     action_runner.run(action);
                 }

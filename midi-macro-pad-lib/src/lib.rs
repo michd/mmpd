@@ -9,3 +9,4 @@ pub mod keyboard_control;
 pub mod macros;
 mod shell;
 pub mod match_checker;
+pub mod state;
