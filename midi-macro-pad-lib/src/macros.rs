@@ -22,6 +22,88 @@ impl Scope<'_> {
     }
 }
 
+pub struct MacroBuilder<'a> {
+    name: Option<String>,
+    match_events: Vec<Box<EventMatcher>>,
+    required_preconditions: Option<Vec<Precondition>>,
+    actions: Vec<Action<'a>>,
+    scope: Option<&'a Scope<'a>>
+}
+
+impl <'a> MacroBuilder<'a> {
+    pub fn from_event_matcher(
+        event_matcher: Box<EventMatcher>
+    ) -> MacroBuilder<'a> {
+        MacroBuilder {
+            name: None,
+            match_events: vec![event_matcher],
+            required_preconditions: None,
+            actions: vec![],
+            scope: None
+        }
+    }
+
+    pub fn set_event_matchers(mut self, event_matchers: Vec<Box<EventMatcher>>) -> Self {
+        self.match_events = event_matchers;
+        self
+    }
+
+    pub fn add_event_matcher(mut self, event_matcher: Box<EventMatcher>) -> Self {
+        self.match_events.push(event_matcher);
+        self
+    }
+
+    pub fn set_actions(mut self, actions: Vec<Action<'a>>) -> Self {
+        self.actions = actions;
+        self
+    }
+
+    pub fn add_action(mut self, action: Action<'a>) -> Self {
+        self.actions.push(action);
+        self
+    }
+
+    pub fn set_name(mut self, name: String) -> Self {
+        self.name = Some(name);
+        self
+    }
+
+    pub fn set_preconditions(mut self, preconditions: Vec<Precondition>) -> Self {
+        self.required_preconditions = Some(preconditions);
+        self
+    }
+
+    pub fn add_precondition(mut self, precondition: Precondition) -> Self {
+        let mut new_preconditions : Vec<Precondition> = vec![];
+
+        if let Some(_) = self.required_preconditions {
+            let mut preconditions = self.required_preconditions.take().unwrap();
+            new_preconditions.append(&mut preconditions);
+            new_preconditions.push(precondition);
+            self.required_preconditions = Some(new_preconditions);
+        } else {
+            self.required_preconditions = Some(vec![precondition]);
+        }
+
+        self
+    }
+
+    pub fn set_scope(mut self, scope: &'a Scope<'a>) -> Self {
+        self.scope = Some(scope);
+        self
+    }
+
+    pub fn build(self) -> Macro<'a> {
+        Macro {
+            name: self.name,
+            match_events: self.match_events,
+            required_preconditions: self.required_preconditions,
+            actions: self.actions,
+            scope: self.scope
+        }
+    }
+}
+
 pub struct Macro<'a> {
     name: Option<String>,
     match_events: Vec<Box<EventMatcher>>,
@@ -30,26 +112,7 @@ pub struct Macro<'a> {
     scope: Option<&'a Scope<'a>>
 }
 
-// TODO: given that there are 4 different arguments to new, 2 of which can be `None`,
-// it would be good to switch to a builder pattern instead, making it clearer what parameter
-// the argument being passed is for. Sadly rust does not support named arguments.
 impl Macro<'_> {
-    pub fn new<'a>(
-        name: Option<String>,
-        match_events: Vec<Box<EventMatcher>>,
-        required_preconditions: Option<Vec<Precondition>>,
-        actions: Vec<Action<'a>>,
-        scope: Option<&'a Scope>
-    ) -> Macro<'a> {
-        Macro {
-            name,
-            match_events,
-            required_preconditions,
-            actions,
-            scope
-        }
-    }
-
     pub fn name(&self) -> Option<&str> {
         if let Some(n) = &self.name {
             Some(n)

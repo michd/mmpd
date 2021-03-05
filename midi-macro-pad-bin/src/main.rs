@@ -6,7 +6,7 @@ use midi_macro_pad_lib::macros::actions::{Action, ActionRunner};
 use midi_macro_pad_lib::macros::event_matching::midi::MidiEventMatcher;
 use midi_macro_pad_lib::match_checker::{MatchChecker, NumberMatcher, StringMatcher};
 use midi_macro_pad_lib::midi;
-use midi_macro_pad_lib::macros::{Macro, Scope};
+use midi_macro_pad_lib::macros::{Scope, MacroBuilder};
 use midi_macro_pad_lib::macros::event_matching::{MatcherType, Event, EventMatcher};
 
 fn main() {
@@ -113,71 +113,50 @@ fn task_listen(port_pattern: Option<&String>) -> () {
         Some(StringMatcher::EndsWith("Inkscape"))
     );
 
-    let inkscape_macro = Macro::new(
-        Some("inkscape align objects horizontally".to_string()),
-
-        vec![
-            Box::new(EventMatcher::new(
-                MatcherType::Midi(Box::new(MidiEventMatcher::NoteOn {
-                    channel_match: Some(NumberMatcher::Val(0)),
-                    key_match: Some(NumberMatcher::Val(48)),
-                    velocity_match: None
-                })),
-
-                None
-            ))
-        ],
-
-        None,
-
-        vec![
-            Action::KeySequence("ctrl+shift+a", 1),
-            Action::KeySequence("Tab", 6),
-            Action::KeySequence("Return", 1),
-        ],
-
-        Some(&inkscape_scope)
-    );
-
-    let hello_world_macro = Macro::new(
-        Some("type hello world".to_string()),
-
-        vec![
-            Box::new(EventMatcher::new(
-                MatcherType::Midi(Box::new(MidiEventMatcher::NoteOn {
-                    channel_match: Some(NumberMatcher::Val(0)),
-                    key_match: Some(NumberMatcher::Val(60)),
-                    velocity_match: Some(NumberMatcher::Range { min: Some(63), max: None })
-                })),
-
-                None
-            ))
-        ],
-
-        None,
-        vec![Action::EnterText("Hello world!", 1)],
+    let inkscape_macro = MacroBuilder::from_event_matcher(Box::new(EventMatcher::new(
+        MatcherType::Midi(Box::new(MidiEventMatcher::NoteOn {
+            channel_match: Some(NumberMatcher::Val(0)),
+            key_match: Some(NumberMatcher::Val(48)),
+            velocity_match: None
+        })),
         None
-    );
+    )))
+        .set_name("inkscape align objects horizontally".to_string())
+        .add_action(Action::KeySequence("ctrl+shift+a", 1))
+        .add_action(Action::KeySequence("Tab", 6))
+        .add_action(Action::KeySequence("Return", 1))
+        .set_scope(&inkscape_scope)
+        .build();
 
-    let ctrl_c_macro = Macro::new(
-        Some("ctrl+c".to_string()),
+    let hello_world_macro = MacroBuilder::from_event_matcher(
+        Box::new(EventMatcher::new(
+            MatcherType::Midi(Box::new(MidiEventMatcher::NoteOn {
+                channel_match: Some(NumberMatcher::Val(0)),
+                key_match: Some(NumberMatcher::Val(60)),
+                velocity_match: Some(NumberMatcher::Range { min: Some(63), max: None })
+            })),
 
-        vec![
-            Box::new(EventMatcher::new(
-                MatcherType::Midi(Box::new(MidiEventMatcher::NoteOn {
-                    channel_match: Some(NumberMatcher::Val(0)),
-                    key_match: Some(NumberMatcher::Val(61)),
-                    velocity_match: None
-                })),
+            None
+        ))
+    )
+        .set_name("hello world".to_string())
+        .add_action(Action::EnterText("Hello world!", 1))
+        .build();
 
-                None
-            ))
-        ],
+    let ctrl_c_macro = MacroBuilder::from_event_matcher(
+        Box::new(EventMatcher::new(
+            MatcherType::Midi(Box::new(MidiEventMatcher::NoteOn {
+                channel_match: Some(NumberMatcher::Val(0)),
+                key_match: Some(NumberMatcher::Val(61)),
+                velocity_match: None
+            })),
 
-        None,
-        vec![Action::KeySequence("ctrl+c", 1)],
-        None
-    );
+            None
+        ))
+    )
+        .set_name("ctrl+c".to_string())
+        .add_action(Action::KeySequence("ctrl+c", 1))
+        .build();
 
     let macro_list = vec![inkscape_macro, hello_world_macro, ctrl_c_macro];
 
