@@ -7,7 +7,7 @@ use midi_macro_pad_lib::macros::event_matching::midi::MidiEventMatcher;
 use midi_macro_pad_lib::match_checker::{MatchChecker, NumberMatcher, StringMatcher};
 use midi_macro_pad_lib::midi;
 use midi_macro_pad_lib::macros::{Macro, Scope};
-use midi_macro_pad_lib::macros::event_matching::{EventMatcher, Event};
+use midi_macro_pad_lib::macros::event_matching::{MatcherType, Event, EventMatcher};
 
 fn main() {
     println!("MIDI Macro Pad starting.");
@@ -114,15 +114,22 @@ fn task_listen(port_pattern: Option<&String>) -> () {
     );
 
     let inkscape_macro = Macro::new(
+        Some("inkscape align objects horizontally".to_string()),
+
         vec![
-            Box::new(EventMatcher::Midi(
-                Box::new(MidiEventMatcher::NoteOn {
+            Box::new(EventMatcher::new(
+                MatcherType::Midi(Box::new(MidiEventMatcher::NoteOn {
                     channel_match: Some(NumberMatcher::Val(0)),
                     key_match: Some(NumberMatcher::Val(48)),
                     velocity_match: None
-                })
+                })),
+
+                None
             ))
         ],
+
+        None,
+
         vec![
             Action::KeySequence("ctrl+shift+a", 1),
             Action::KeySequence("Tab", 6),
@@ -133,34 +140,42 @@ fn task_listen(port_pattern: Option<&String>) -> () {
     );
 
     let hello_world_macro = Macro::new(
+        Some("type hello world".to_string()),
+
         vec![
-            Box::new(EventMatcher::Midi(
-                Box::new(MidiEventMatcher::NoteOn {
+            Box::new(EventMatcher::new(
+                MatcherType::Midi(Box::new(MidiEventMatcher::NoteOn {
                     channel_match: Some(NumberMatcher::Val(0)),
                     key_match: Some(NumberMatcher::Val(60)),
                     velocity_match: Some(NumberMatcher::Range { min: Some(63), max: None })
-                })
+                })),
+
+                None
             ))
         ],
 
+        None,
         vec![Action::EnterText("Hello world!", 1)],
-
         None
     );
 
     let ctrl_c_macro = Macro::new(
+        Some("ctrl+c".to_string()),
+
         vec![
-            Box::new(EventMatcher::Midi(
-              Box::new(MidiEventMatcher::NoteOn {
-                  channel_match: Some(NumberMatcher::Val(0)),
-                  key_match: Some(NumberMatcher::Val(61)),
-                  velocity_match: None
-              })
+            Box::new(EventMatcher::new(
+                MatcherType::Midi(Box::new(MidiEventMatcher::NoteOn {
+                    channel_match: Some(NumberMatcher::Val(0)),
+                    key_match: Some(NumberMatcher::Val(61)),
+                    velocity_match: None
+                })),
+
+                None
             ))
         ],
 
+        None,
         vec![Action::KeySequence("ctrl+c", 1)],
-
         None
     );
 
@@ -173,12 +188,18 @@ fn task_listen(port_pattern: Option<&String>) -> () {
     };
 
     for msg in rx {
-        println!("{:?}", msg);
+        //println!("{:?}", msg);
 
         let event = Event::Midi(&msg);
 
         for macro_item in macro_list.iter() {
             if let Some(actions) = macro_item.evaluate(&event, &state) {
+                if let Some(macro_name) = macro_item.name() {
+                    println!("Executing macro named: '{}'", macro_name);
+                } else {
+                    println!("Executing macro. (No name given)");
+                }
+
                 for action in actions {
                     action_runner.run(action);
                 }

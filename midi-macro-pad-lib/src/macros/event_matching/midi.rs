@@ -11,9 +11,6 @@ pub enum MidiEventMatcher {
     PitchBendRange { channel_match: NumMatch, value_match: NumMatch },
 }
 
-// TODO: something that takes the generic format of a midi event matcher (with
-// strings and arrays etc) into a MidiEventMatcher value
-
 impl MatchChecker<MidiMessage> for MidiEventMatcher {
     fn matches(&self, val: &MidiMessage) -> bool {
         match self {

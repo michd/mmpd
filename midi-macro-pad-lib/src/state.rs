@@ -1,11 +1,16 @@
 use crate::macros::Scope;
 use crate::focus::adapters::FocusAdapter;
 use crate::match_checker::MatchChecker;
+use crate::macros::preconditions::Precondition;
 
+#[cfg(test)]
+use mockall::automock;
+
+#[cfg_attr(test, automock)]
 pub trait State {
-    fn matches_scope(&self, scope: &Option<&Scope>) -> bool;
+    fn matches_scope<'a>(&self, scope: &Option<&'a Scope<'a>>) -> bool;
 
-    // TODO: precondition checking
+    fn matches(&self, val: &Precondition) -> bool;
 }
 
 pub fn new(
@@ -63,5 +68,9 @@ impl State for StateImpl {
         } else {
             true
         }
+    }
+
+    fn matches(&self, _val: &Precondition) -> bool {
+        true
     }
 }
