@@ -31,10 +31,6 @@ pub enum Action<'a> {
         env_vars: Option<Vec<(&'a str, &'a str)>>
     },
 
-    /// A list of actions to be run in the order specified, to allow executing several different
-    /// ones for more complex things.
-    Combination(Vec<Action<'a>>),
-
     // This can be expanded upon
 }
 
@@ -80,12 +76,6 @@ impl ActionRunner {
 
             Action::Shell { command, args, env_vars } => {
                 self.run_shell(command, args.clone(), env_vars.clone());
-            },
-
-            Action::Combination(actions) => {
-                for action in actions {
-                    self.run(action);
-                }
             },
         }
     }
@@ -222,30 +212,6 @@ mod tests {
             .into_runner();
 
         runner.run(&Action::EnterText("hello", 3));
-    }
-
-    #[test]
-    fn runs_combination_action() {
-        let mut mock_keyb_adapter = MockKeyboardControlAdapter::new();
-
-        mock_keyb_adapter.expect_send_keysequence()
-            .with(eq("ctrl+shift+Tab"), eq(DELAY_BETWEEN_KEYS_US))
-            .times(2)
-            .returning(|_, _| ());
-
-        mock_keyb_adapter.expect_send_text()
-            .with(eq("hello"), eq(DELAY_BETWEEN_KEYS_US))
-            .times(3)
-            .returning(|_, _| ());
-
-        let runner = ActionRunnerBuilder::new()
-            .set_keyboard_adapter(Box::new(mock_keyb_adapter))
-            .into_runner();
-
-        runner.run(&Action::Combination(vec![
-            Action::KeySequence("ctrl+shift+Tab", 2),
-            Action::EnterText("hello", 3)
-        ]));
     }
 
     #[test]
