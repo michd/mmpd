@@ -8,6 +8,8 @@ edition = "2018"
 midir = "^0.7.0"
 libxdo = "^0.6"
 regex = "1"
+yaml-rust = "0.4"
+linked-hash-map = "0.5.4"
 
 [dev-dependencies]
 mockall = "0.9.1"
