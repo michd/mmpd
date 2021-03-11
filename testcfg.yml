@@ -1,0 +1,47 @@
+version: 1
+
+scopes:
+  - window_name:
+      ends_with: "Inkscape"
+
+    macros:
+      - name: "Inkscape align objects horizontally"
+        matching_events:
+          - type: midi
+            data:
+              message_type: note_on
+              channel: 0
+              key: 48
+        actions:
+          - type: key_sequence
+            data: "ctrl+shift+a"
+          - type: key_sequence
+            data:
+              sequence: "Tab"
+              count: 6
+          - type: key_sequence
+            data: "Return"
+
+global_macros:
+  - name: "Type hello world"
+    matching_events:
+      - type: midi
+        data:
+          message_type: note_on
+          channel: 0
+          key: 60
+          velocity:
+            min: 63
+    actions:
+      - type: enter_text
+        data: "Hello world"
+  - name: "ctrl+c"
+    matching_events:
+      - type: midi
+        data:
+          message_type: note_on
+          channel: 0
+          key: 61
+    actions:
+      - type: key_sequence
+        data: "ctrl+c"

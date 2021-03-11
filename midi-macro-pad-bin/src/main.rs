@@ -1,13 +1,14 @@
-use std::env;
+use std::{env, fs};
 use std::vec::Vec;
 
 use midi_macro_pad_lib::{focus, state};
-use midi_macro_pad_lib::macros::actions::{Action, ActionRunner};
+use midi_macro_pad_lib::macros::actions::ActionRunner;
 use midi_macro_pad_lib::macros::event_matching::midi::MidiEventMatcher;
-use midi_macro_pad_lib::match_checker::{MatchChecker, NumberMatcher, StringMatcher};
+use midi_macro_pad_lib::match_checker::{MatchChecker, NumberMatcher};
 use midi_macro_pad_lib::midi;
-use midi_macro_pad_lib::macros::{Scope, MacroBuilder};
-use midi_macro_pad_lib::macros::event_matching::{MatcherType, Event, EventMatcher};
+use midi_macro_pad_lib::macros::event_matching::Event;
+use midi_macro_pad_lib::config::yaml_config_parser::YamlConfigParser;
+use midi_macro_pad_lib::config::{ConfigInput, Config};
 
 fn main() {
     println!("MIDI Macro Pad starting.");
@@ -108,57 +109,13 @@ fn task_listen(port_pattern: Option<&String>) -> () {
     let action_runner = action_runner.unwrap();
     let state = state::new(focus_adapter);
 
-    let inkscape_scope = Scope::new(
-        None,
-        Some(StringMatcher::EndsWith("Inkscape"))
-    );
+    let config = get_config();
 
-    let inkscape_macro = MacroBuilder::from_event_matcher(Box::new(EventMatcher::new(
-        MatcherType::Midi(Box::new(MidiEventMatcher::NoteOn {
-            channel_match: Some(NumberMatcher::Val(0)),
-            key_match: Some(NumberMatcher::Val(48)),
-            velocity_match: None
-        })),
-        None
-    )))
-        .set_name("inkscape align objects horizontally".to_string())
-        .add_action(Action::KeySequence("ctrl+shift+a", 1))
-        .add_action(Action::KeySequence("Tab", 6))
-        .add_action(Action::KeySequence("Return", 1))
-        .set_scope(&inkscape_scope)
-        .build();
+    if let None = config {
+        return;
+    }
 
-    let hello_world_macro = MacroBuilder::from_event_matcher(
-        Box::new(EventMatcher::new(
-            MatcherType::Midi(Box::new(MidiEventMatcher::NoteOn {
-                channel_match: Some(NumberMatcher::Val(0)),
-                key_match: Some(NumberMatcher::Val(60)),
-                velocity_match: Some(NumberMatcher::Range { min: Some(63), max: None })
-            })),
-
-            None
-        ))
-    )
-        .set_name("hello world".to_string())
-        .add_action(Action::EnterText("Hello world!", 1))
-        .build();
-
-    let ctrl_c_macro = MacroBuilder::from_event_matcher(
-        Box::new(EventMatcher::new(
-            MatcherType::Midi(Box::new(MidiEventMatcher::NoteOn {
-                channel_match: Some(NumberMatcher::Val(0)),
-                key_match: Some(NumberMatcher::Val(61)),
-                velocity_match: None
-            })),
-
-            None
-        ))
-    )
-        .set_name("ctrl+c".to_string())
-        .add_action(Action::KeySequence("ctrl+c", 1))
-        .build();
-
-    let macro_list = vec![inkscape_macro, hello_world_macro, ctrl_c_macro];
+    let config = config.unwrap();
 
     let stop_matcher = MidiEventMatcher::ControlChange {
         channel_match: None,
@@ -171,7 +128,7 @@ fn task_listen(port_pattern: Option<&String>) -> () {
 
         let event = Event::Midi(&msg);
 
-        for macro_item in macro_list.iter() {
+        for macro_item in config.macros.iter() {
             if let Some(actions) = macro_item.evaluate(&event, &state) {
                 if let Some(macro_name) = macro_item.name() {
                     println!("Executing macro named: '{}'", macro_name);
@@ -193,4 +150,24 @@ fn task_listen(port_pattern: Option<&String>) -> () {
     }
 
     println!("Exiting.");
+}
+
+fn get_config() -> Option<Config> {
+    let filename = "testcfg.yml";
+    let config_text = fs::read_to_string(filename).unwrap();
+    let parser = YamlConfigParser::new(&config_text);
+    let raw_config = parser.as_raw_config();
+
+    if let Ok(rc) = raw_config {
+        match rc.process() {
+            Ok(config) => Some(config),
+            Err(e) => {
+                eprintln!("Error loading config: {}", e.description());
+                None
+            }
+        }
+    } else {
+        eprintln!("Error: No raw config loaded");
+        None
+    }
 }
