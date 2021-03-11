@@ -3,33 +3,38 @@ use crate::shell::{Shell, ShellImpl};
 
 /// Action run in response to a MIDI event
 /// Any Action value can be run through ActionRunner::run.
-pub enum Action<'a> {
+pub enum Action {
     /// Sends a key sequence 0 or more times
     /// Use this one for key combinations.
     /// The str argument specifies the key sequence, according to X Keysym notation.
     /// Per example "ctrl+shift+t": emulates pressing the "Ctrl", "Shift" and "t" keys at
     /// the same time.
     /// The number is how many times this key sequence should be entered.
-    KeySequence(&'a str, usize),
+    KeySequence(String, usize),
 
     /// Enters text as if you typed it on a keyboard
     /// Use this one for text exactly as in the string provided.
     /// The number is how many times this same string should be entered.
-    EnterText(&'a str, usize),
+    EnterText(String, usize),
 
     /// Runs a program using the shell, allows running arbitrary programs.
     Shell {
         /// Absolute path to the program to run, without any arguments or options
-        command: &'a str,
+        command: String,
 
         /// A list of arguments provided to the command. These end up space-separated.
         /// If one item includes spaces, that item will be surrounded by quotes so it's treated as
         /// one argument.
-        args: Option<Vec<&'a str>>,
+        args: Option<Vec<String>>,
 
         /// A list of key/value pairs with environment variables to be provided to the program
-        env_vars: Option<Vec<(&'a str, &'a str)>>
+        env_vars: Option<Vec<(String, String)>>
     },
+
+    // TODO: add a single action type for controlling aspects
+    // of this program itself (like exiting).
+    // The program control data can be represented by another enum of available controls,
+    // wrapping relevant data
 
     // This can be expanded upon
 }
@@ -95,8 +100,8 @@ impl ActionRunner {
     fn run_shell(
         &self,
         command: &str,
-        args: Option<Vec<&str>>,
-        env_vars: Option<Vec<(&str, &str)>>
+        args: Option<Vec<String>>,
+        env_vars: Option<Vec<(String, String)>>
     ) {
         // TODO: it would be good to be able to substitute certain patterns in any of the strings
         // used in these commands. Substitutable values would essentially include any parameter that
@@ -163,7 +168,7 @@ mod tests {
             .set_keyboard_adapter(Box::new(mock_keyb_adapter))
             .into_runner();
 
-        runner.run(&Action::KeySequence("ctrl+alt+delete", 1));
+        runner.run(&Action::KeySequence("ctrl+alt+delete".to_string(), 1));
     }
 
     #[test]
@@ -179,7 +184,7 @@ mod tests {
             .set_keyboard_adapter(Box::new(mock_keyb_adapter))
             .into_runner();
 
-        runner.run(&Action::KeySequence("Tab", 3));
+        runner.run(&Action::KeySequence("Tab".to_string(), 3));
     }
 
     #[test]
@@ -195,7 +200,7 @@ mod tests {
             .set_keyboard_adapter(Box::new(mock_keyb_adapter))
             .into_runner();
 
-        runner.run(&Action::EnterText("hello", 1));
+        runner.run(&Action::EnterText("hello".to_string(), 1));
     }
 
     #[test]
@@ -211,14 +216,14 @@ mod tests {
             .set_keyboard_adapter(Box::new(mock_keyb_adapter))
             .into_runner();
 
-        runner.run(&Action::EnterText("hello", 3));
+        runner.run(&Action::EnterText("hello".to_string(), 3));
     }
 
     #[test]
     fn runs_shell_actions() {
         let mut mock_shell = MockShell::new();
 
-        // TODO: Currently this checks only if paramaters are passed through as they came.
+        // TODO: Currently this checks only if parameters are passed through as they came.
         // Later we will want to process some input event-related variables by doing string
         // substitution in arguments / env vars. At that point a unit tests for this
         // functionality becomes actually useful.
@@ -228,8 +233,11 @@ mod tests {
         mock_shell.expect_execute()
             .withf(|cmd, args, env_vars| {
                 let expected_cmd = "test_cmd";
-                let expected_args = Some(vec!["arg1", "arg2"]);
-                let expected_env_vars = Some(vec![("key1", "val1"), ("key2", "val2")]);
+                let expected_args = Some(vec!["arg1".to_string(), "arg2".to_string()]);
+                let expected_env_vars = Some(vec![
+                    ("key1".to_string(), "val1".to_string()),
+                    ("key2".to_string(), "val2".to_string())
+                ]);
 
                 cmd == expected_cmd
                     && do_opt_vecs_match(args, &expected_args)
@@ -243,9 +251,12 @@ mod tests {
             .into_runner();
 
         runner.run(&Action::Shell {
-            command: "test_cmd",
-            args: Some(vec!["arg1", "arg2"]),
-            env_vars: Some(vec![("key1", "val1"), ("key2", "val2")])
+            command: "test_cmd".to_string(),
+            args: Some(vec!["arg1".to_string(), "arg2".to_string()]),
+            env_vars: Some(vec![
+                ("key1".to_string(), "val1".to_string()),
+                ("key2".to_string(), "val2".to_string())
+            ])
         });
     }
 

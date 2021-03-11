@@ -8,11 +8,11 @@ use mockall::automock;
 /// mocking in unit tests.
 #[cfg_attr(test, automock)]
 pub(crate) trait Shell {
-    fn execute<'a>(
+    fn execute(
         &self,
-        command: &'a str,
-        args: Option<Vec<&'a str>>,
-        env_vars: Option<Vec<(&'a str, &'a str)>>
+        command: &str,
+        args: Option<Vec<String>>,
+        env_vars: Option<Vec<(String, String)>>
     );
 }
 
@@ -28,8 +28,8 @@ impl Shell for ShellImpl {
     fn execute(
         &self,
         command: &str,
-        args: Option<Vec<&str>>,
-        env_vars: Option<Vec<(&str, &str)>>
+        args: Option<Vec<String>>,
+        env_vars: Option<Vec<(String, String)>>
     ) {
         let mut cmd = Command::new(command);
 

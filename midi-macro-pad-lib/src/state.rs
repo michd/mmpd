@@ -8,7 +8,7 @@ use mockall::automock;
 
 #[cfg_attr(test, automock)]
 pub trait State {
-    fn matches_scope<'a>(&self, scope: &Option<&'a Scope<'a>>) -> bool;
+    fn matches_scope(&self, scope: &Option<Scope>) -> bool;
 
     fn matches(&self, val: &Precondition) -> bool;
 }
@@ -34,12 +34,12 @@ impl StateImpl {
 }
 
 impl State for StateImpl {
-    fn matches_scope<'a>(&self, scope: &Option<&Scope<'a>>) -> bool {
+    fn matches_scope(&self, scope: &Option<Scope>) -> bool {
         if scope.is_none() {
             return true
         }
 
-        let scope = scope.unwrap();
+        let scope = scope.clone().unwrap();
 
         if scope.window_name.is_none() && scope.window_class.is_none() {
             return true

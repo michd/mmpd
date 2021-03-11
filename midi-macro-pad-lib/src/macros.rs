@@ -8,35 +8,48 @@ pub mod actions;
 pub mod event_matching;
 pub mod preconditions;
 
-pub struct Scope<'a> {
-    pub window_class: Option<StringMatcher<'a>>,
-    pub window_name: Option<StringMatcher<'a>>,
+#[derive(Clone)]
+pub struct Scope {
+    pub window_class: Option<StringMatcher>,
+    pub window_name: Option<StringMatcher>,
 }
 
-impl Scope<'_> {
+impl Scope {
     pub fn new<'a>(
-        window_class: Option<StringMatcher<'a>>,
-        window_name: Option<StringMatcher<'a>>
-    ) -> Scope<'a> {
+        window_class: Option<StringMatcher>,
+        window_name: Option<StringMatcher>
+    ) -> Scope {
         Scope { window_class, window_name }
     }
 }
 
-pub struct MacroBuilder<'a> {
+pub struct MacroBuilder {
     name: Option<String>,
     match_events: Vec<Box<EventMatcher>>,
     required_preconditions: Option<Vec<Precondition>>,
-    actions: Vec<Action<'a>>,
-    scope: Option<&'a Scope<'a>>
+    actions: Vec<Action>,
+    scope: Option<Scope>
 }
 
-impl <'a> MacroBuilder<'a> {
+impl <'a> MacroBuilder {
     pub fn from_event_matcher(
         event_matcher: Box<EventMatcher>
-    ) -> MacroBuilder<'a> {
+    ) -> MacroBuilder {
         MacroBuilder {
             name: None,
             match_events: vec![event_matcher],
+            required_preconditions: None,
+            actions: vec![],
+            scope: None
+        }
+    }
+
+    pub fn from_event_matchers(
+        event_matchers: Vec<Box<EventMatcher>>
+    ) -> MacroBuilder {
+        MacroBuilder {
+            name: None,
+            match_events: event_matchers,
             required_preconditions: None,
             actions: vec![],
             scope: None
@@ -53,12 +66,12 @@ impl <'a> MacroBuilder<'a> {
         self
     }
 
-    pub fn set_actions(mut self, actions: Vec<Action<'a>>) -> Self {
+    pub fn set_actions(mut self, actions: Vec<Action>) -> Self {
         self.actions = actions;
         self
     }
 
-    pub fn add_action(mut self, action: Action<'a>) -> Self {
+    pub fn add_action(mut self, action: Action) -> Self {
         self.actions.push(action);
         self
     }
@@ -88,12 +101,12 @@ impl <'a> MacroBuilder<'a> {
         self
     }
 
-    pub fn set_scope(mut self, scope: &'a Scope<'a>) -> Self {
+    pub fn set_scope(mut self, scope: Scope) -> Self {
         self.scope = Some(scope);
         self
     }
 
-    pub fn build(self) -> Macro<'a> {
+    pub fn build(self) -> Macro {
         Macro {
             name: self.name,
             match_events: self.match_events,
@@ -104,15 +117,15 @@ impl <'a> MacroBuilder<'a> {
     }
 }
 
-pub struct Macro<'a> {
+pub struct Macro {
     name: Option<String>,
     match_events: Vec<Box<EventMatcher>>,
     required_preconditions: Option<Vec<Precondition>>,
-    actions: Vec<Action<'a>>,
-    scope: Option<&'a Scope<'a>>
+    actions: Vec<Action>,
+    scope: Option<Scope>
 }
 
-impl Macro<'_> {
+impl Macro {
     pub fn name(&self) -> Option<&str> {
         if let Some(n) = &self.name {
             Some(n)
@@ -128,6 +141,7 @@ impl Macro<'_> {
         state: &'b Box<dyn State>
     ) -> Option<&Vec<Action>> {
 
+        // TODO: rejigger the order of these checks so the most expensive check is done last
         if !state.matches_scope(&self.scope) {
             return None
         }

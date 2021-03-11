@@ -4,16 +4,17 @@ pub trait MatchChecker<T> {
     fn matches(&self, val: &T) -> bool;
 }
 
-pub enum StringMatcher<'a> {
-    Is(&'a str),
-    Contains(&'a str),
-    StartsWith(&'a str),
-    EndsWith(&'a str),
+#[derive(Clone)]
+pub enum StringMatcher {
+    Is(String),
+    Contains(String),
+    StartsWith(String),
+    EndsWith(String),
     Regex(Regex)
 }
 
 // TODO unit test
-impl MatchChecker<&str> for StringMatcher<'_> {
+impl MatchChecker<&str> for StringMatcher {
     fn matches(&self, val: &&str) -> bool {
         match self {
             StringMatcher::Is(pattern) => val == pattern,
