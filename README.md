@@ -28,7 +28,7 @@ What's implemented so far:
 The program's "listen" command currently loads the "testcfg.yml" config file,
 loads it into the data structures and uses it, which works.
 
-There's documentation on the configuration format in [docs/config.md](/michd/midi-macro-pad/blob/main/docs/config.md)
+There's documentation on the configuration format in [docs/config.md](https://github.com/michd/midi-macro-pad/blob/main/docs/config.md)
 including some future plans.
 
 ## To do:
