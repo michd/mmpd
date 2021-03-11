@@ -7,17 +7,42 @@ currently focused.
 Initially written for use on Linux distributions using the X windowing system, it is structured with
 the intent to allow implementing it for other platforms.
 
-## Current status: proof of concept
+## Current status: not ready for use
 
-All the parts are there to prove the basic functionality:
-- Detecting focused window (collecting window class and name)
-- Connecting to a MIDI input device and parsing its messages
-- Sending key sequences based on specific MIDI input messages and focused window
+What's implemented so far:
 
-The mapping of midi messages to actions taken is hardcoded just to prove the point.
-Further plans are to work out a robust, flexible, extensible configuration file format defining
-midi message filters and sequences of actions to be run when those match. It will be a JSON format
-with a specified structure.
+- Detecting focused window (window class, name)
+- Connecting to a MIDI input device, receiving and parsing its messages
+- Data structures for describing:
+  - Scopes (focused window matching)
+    - With flexible string matching
+  - Actions (to be run in response to MIDI events)
+  - Event matchers (describes an event to matched to trigger an event)
+    - Midi Event matcher with flexible parameter value matching options
+  - Macros (combining scopes, event matchers, and actions into one package)
+- Configuration: YAML parser to intermediary "RawConfig" format, plus a parser
+  from RawConfig into the aforementioned data structures
+  
+- Limited unit test coverage for the data structures
+
+The program's "listen" command currently loads the "testcfg.yml" config file,
+loads it into the data structures and uses it, which works.
+
+There's documentation on the configuration format in [docs/config.md](/michd/midi-macro-pad/blob/main/docs/config.md)
+including some future plans.
+
+## To do:
+
+- Write documentation in configuration parsing code
+- Extensively cover configuration parsing in unit tests
+- Build out command line interface (defaulting to config file etc)
+- Allow specifying midi input name pattern in config file
+- Add a "monitor" verb to monitor incoming MIDI messages for debugging
+- Fix up focused window checking so it doesn't need to use `Command`, use
+  a library instead.
+- Implement the state keeping component (MIDI etc) and precondition data structures
+- Add some action enum types that allow control of the program (like exiting it, reloading config)
+- Investigate portability to non-linux platforms
 
 ## Dependencies
 

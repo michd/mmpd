@@ -1,45 +1,38 @@
 # Configuration
 
-**Note: At this time, none of what's documented in here is implemented yet, in that there isn't even a configuration
-file loading facility. It is documented here mainly as a specification to work towards with the implementation, after
-which it will serve as part of the manual.**
-
----
-
-MIDI-Macro-Pad is configured with a single JSON file specifying events and conditions that need to happen in order to
+MIDI-Macro-Pad is configured with a single YAML file specifying events and conditions that need to happen in order to
 run specified actions.
 
 At the top level, the file has two properties, and looks like this:
-```json
-{
-  "version": 1,
+```yaml
+version: 1
   
-  "scopes": [
-  ],
-  
-  "global_macros": [
-  ]
-}
+scopes:
+  - ...
+
+global_macros:
+  - ...
 ```
 
 - `version`: Configuration file format version. Instructs the program what to expect. This is included from the
   beginning in case a future version introduced such a big overhaul that the configuration files would become
   incompatible. Including it means the program will always know what to expect, and prevents breaking changes.
-- `scopes`: Array of application scopes, each with its own array of macros.
-- `global_macros`: Array of macros, which can run regardless of which application is focused.
+- `scopes`: List of application scopes, each with its own list of macros.
+- `global_macros`: List of macros, which can run regardless of which application is focused.
 
 ## Scopes
 
-A scope consists of a pattern to match a focused application window's title and/or window class, and an array of
+A scope consists of a pattern to match a focused application window's title and/or window class, and a list of
 associated macros that only apply if a window matching the pattern is currently focused. A scope looks like this:
 
-```json
-{
-  "window_class": { "is": "exact text" },
-  "window_name": { "contains": "partial text" },
-  "macros": [    
-  ]
-}
+```yaml
+window_class:
+  is: "exact text"
+window_name:
+  contains: "partial text"
+  
+macros:
+  - ...
 ```
 
 - `window_class`: matches against a window class of the focused window. The matching object is documented below, see
@@ -52,28 +45,26 @@ associated macros that only apply if a window matching the pattern is currently 
 A string matching object can take several forms, all consisting of one key and a string value. The key determines how
 the specified pattern gets used against the string being compared.
 
-- `{ "is": "pattern" }`: Value must be exactly the same as the pattern string specified
-- `{ "contains": "pattern" }`: Value must contain all of the pattern string.
-- `{ "start_with": "pattern" }`: Value must begin with the pattern string.
-- `{ "ends_with": "pattern" }`: Value must end with the pattern string.
-- `{ "regex": "pattern" }`: Value must match the regular expression in pattern.
+- `is: "pattern"`: Value must be exactly the same as the pattern string specified
+- `contains: "pattern"`: Value must contain all of the pattern string.
+- `start_with: "pattern"`: Value must begin with the pattern string.
+- `ends_with: "pattern"`: Value must end with the pattern string.
+- `regex: "pattern"`: Value must match the regular expression in pattern.
 
 ## Macros
 
 A macro consists of one or more matching events, along with any preconditions that must be satisfied for the event to
 match. It also includes one or more action to be executed if all filters and preconditions do match.
 
-```json
-{
-  "matching_events": [
-  ],
+```yaml
+matching_events:
+  - ...
   
-  "required_preconditions": [
-  ],
+required_preconditions:
+  - ...
   
-  "actions": [
-  ]
-}
+actions:
+  - ...
 ```
 
 - `matching_events`: A list of events. If **at least one** of the events in this array matches an incoming event, it is
@@ -90,16 +81,12 @@ match. It also includes one or more action to be executed if all filters and pre
 An event fundamentally consists of a type of event, a data object with fields relevant to that type of event, and
 optionally a list of required preconditions that only need to match for this event.
 
-```json
-{
-  "type": "midi",
-  
-  "data": {    
-  },
-  
-  "required_preconditions": [
-  ]
-}
+```yaml
+type: midi
+data:
+  ...
+required_preconditions:
+  - ...
 ```
 
 - `type`: This field instructs the program how to process the data contained in the `data` field. Since the software is
@@ -114,13 +101,13 @@ optionally a list of required preconditions that only need to match for this eve
 
 The data object for matching a MIDI event looks as follows:
 
-```json
-{
-  "message_type": "note_on",
-  "channel": [3, [5, 8]],
-  "key": 32,
-  "velocity": null
-}
+```yaml
+message_type: note_on,
+channel: 
+  - 3
+  - min: 5,
+    max: 8
+key: 32,
 ```
 
 - `message_type`: Required, which MIDI message type to respond to. One event can only cover one type of MIDI message.
@@ -181,33 +168,46 @@ For MIDI value ranging, there are two distinct types of values.
 - All other fields: Everything else is numeric (positive integers). They may be omitted or set to `null` (without any
   quotes) to match any value.
   
-Numeric fields can otherwise be set to a specific value directly to match only that one. For example: `"key": 32` to
-match one specific key. You may instead specify an array of values: `"key": [32, 33, 34]` will match those 3 keys.
+Numeric fields can otherwise be set to a specific value directly to match only that one. For example: `key: 32` to
+match one specific key. You may instead specify an array of values: `key: [32, 33, 34]` will match those 3 keys.
 
-You may also specify a range of values: `"velocity": {"min": 0, "max": 63}` will match any velocity value from 0-63
-inclusive.
+You may also specify a range: 
+
+```yaml
+velocity:
+  min: 0
+  max: 63
+```
+will match any velocity value from 0-63 inclusive.
 
 Ranges can be open-ended: if you specify only `min`, then any value that is greater than or equal than the specified one
 will match. If you specify only `max`, then any value smaller than or equal to the specified one will match.
 
-Finally, you can mix the two: `"key": [12, 14, {"min": 32, "max": 44}]` will match keys 12, 14, and all the keys from
-32 to 44 inclusive.
+Finally, you can mix the two:
+```yaml
+key: 
+  - 12
+  - 14
+  - min: 32
+    max: 44
+```
+will match keys 12, 14, and all the keys from 32 to 44 inclusive.
 
-### Preconditions
+### Preconditions (NOT IMPLEMENTED YET)
 
-A precondition is something that must be satisfied before an a macro is allowed to run. These are based on state data
+**NOTE: Preconditions are not yet implemented.**
+
+A precondition is something that must be satisfied before a macro is allowed to run. These are based on state data
 the program keeps track of.
 
 A precondition is structured as follows:
 
-```json
-{
-  "type": "midi",
-  "invert": false,
-  
-  "data": {
-  }
-}
+```yaml
+# Note this does not work yet, not implemented.
+type: midi
+invert: false
+data:
+  ...
 ```
 
 - `type`: This field instructs the program how to process the data contained in the `data` field. Since the software is
@@ -217,7 +217,7 @@ expansion to other types later.
   be considered not a match, and vice versa. Optional field, defaulting to `false`.
 - `data`: An object with fields relevant to the precondition type. These specify the condition that must be met.
 
-#### MIDI Preconditions
+#### MIDI Preconditions (NOT IMPLEMENTED YET)
 
 The program keeps track of notes that are currently on, as well as any control change and program change values.
 
@@ -235,29 +235,26 @@ The program remembers:
 
 For example, a precondition that requires note 24 to be on on channel 1 looks as follows:
 
-```json
-{
-  "type": "midi",
-  "data": {
-    "condition_type": "note_on",
-    "channel": 1,
-    "key": 24
-  }
-}
+```yaml
+# Note: this does not work yet, not implemented
+type: midi
+data:
+  condition_type: note_on,
+  channel: 1,
+  key: 24
 ```
 
 A precondition that requires control 42's value to be 64 or greater on channel 2 looks as follows:
 
-```json
-{
-  "type": "midi",
-  "data": {
-    "condition_type": "control",
-    "channel": 2,
-    "control": 42,
-    "value": { "min": 64 }
-  }
-}
+```yaml
+# Note: this does not work yet, not implemented
+type: midi
+data:
+  condition_type: control,
+  channel: 2,
+  control: 42,
+  value: 
+    min: 64
 ```
 
 Much like with MIDI events, the available parameters depend on the `condition_type` selected. Here is a comprehensive
@@ -288,12 +285,10 @@ variables.
 
 An action looks as follows:
 
-```json
-{
-  "type": "key_sequence",
-  "data": {    
-  }
-}
+```yaml
+type: key_sequence,
+data:
+  ...
 ```
 
 - `type`: specifies which kind of action. Its value determines what data fields are required and how it is executed.
@@ -304,14 +299,11 @@ An action looks as follows:
 
 Key sequence actions allow you to enter a keyboard shortcut once or more. A full key sequence action looks as follows:
 
-```json
-{
-  "type": "key_sequence",
-  "data": {
-    "sequence": "ctrl+shift+t",
-    "count": 2
-  }
-}
+```yaml
+type: key_sequence,
+data: 
+  sequence: "ctrl+shift+t",
+  count: 2
 ```
 
 - `sequence`: Required. A string representing the key combination. Key symbols are those from X Keysyms. A list may be
@@ -324,36 +316,49 @@ Key sequence actions allow you to enter a keyboard shortcut once or more. A full
 Enter text actions allow you to type text as-written in response to an event, once or more. A full enter text action
 follows:
 
-```json
-{
-  "type": "enter_text",
-  "data": {
-    "text": "Hello world!",
-    "count": 1
-  }
-}
+```yaml
+type: enter_text,
+data: 
+  text: "Hello world!",
+  count: 1
 ```
 
 - `text`: Required. String containing text exactly as you'd like it "typed" into the focused application.
 - `count`: Optional, defaults to 1. How many times to repeat entering this sequence.
+
+##### Shortened version
+
+For both `key_sequence` and `enter_text`, you can specify the value directly for data to default to a count of 1.
+
+Concretely, the following two are equivalent:
+
+```yaml
+type: enter_text,
+data:
+  text: "Hello world!"
+  count: 1
+```
+
+```yaml
+type: enter_text
+data: "Hello world!"
+```
 
 #### shell
 
 Shell actions allow you to run arbitrary programs, with arbitrary arguments and environment variables. An example
 follows:
 
-```json
-{
-  "type": "shell",
-  "data": {
-    "command": "/usr/bin/echo",
-    "args": ["Hello", "world"],
-    "env_vars": {
-      "key1": "val1",
-      "key2": "val2"
-    }
-  }
-}
+```yaml
+type: shell,
+data:
+  command: "/usr/bin/echo"
+  args:
+    - "Hello"
+    - "world"
+  env_vars:
+    key1: "val1"
+    key2: "val2"
 ```
 
 This action is equivalent to running this following in a bash prompt:
@@ -370,20 +375,18 @@ The fields are the following:
 
 ---
 
-#### Variables
+#### Variables (NOT IMPLEMENTED YET)
 
 Within actions, any data parameter that contains a string can use variables to insert some data from the event that
 triggered the macro, or any state data kept.
 
 For example, using the `enter_text` action, you can type the note number that was just pressed on the keyboard:
 
-```json
-{
-  "type": "enter_text",
-  "data": {
-    "text": "%event.key%"
-  }
-}
+```yaml
+# This example will not work, not yet implemented.
+type: enter_text,
+data:
+  text: "%event.key%"
 ```
 
 If the value specified is not available, this will output "none".
@@ -421,74 +424,47 @@ Other top level namespaces may be added to expose more available data, or provid
 
 ## Full example of a config file
 
-```json
-{
-  "version": 1,
-  
-  "scopes": [
-    {
-      "window_class": { "contains": "gedit" },
-      "window_name": null,
-      "macros": [
-        {
-          "matching_events": [
-            {
-              "type": "midi",
-              "data": {
-                "message_type": "note_on",
-                "key": 33
-              }
-            }
-          ],
-          "actions": [
-            {
-              "type": "key_sequence",
-              "data": { "sequence": "ctrl+t" }
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  
-  "global_macros": [
-    {
-      "matching_events": [
-        {
-          "type": "midi",
-          "data": {
-            "message_type": "note_on",
-            "channel": 1,
-            "key": 32,
-            "velocity": {
-              "min": 64
-            }
-          }
-        }
-      ],
-      "required_preconditions": [
-        {
-          "type": "midi",
-          "data": {
-            "condition_type": "control",
-            "channel": 1,
-            "control": 42,
-            "value": { "max": 32 }
-          }
-        }
-      ],
-      "actions": [
-        {
-          "type": "enter_text",
-          "data": {
-            "text": "Hello world!",
-            "count": 2
-          }
-        }
-      ]
-    }
-  ]
-}
+```yaml
+version: 1
+
+scopes: [
+  - window_class:
+      contains: "gedit"
+    macros: 
+      - matching_events: 
+          - type: midi
+            data:
+              message_type: note_on
+              key: 33
+        actions: [
+          - type: key_sequence,
+            data:
+              sequence: "ctrl+t"
+
+global_macros:
+  - matching_events:
+    - type: midi
+      data:
+        message_type: note_on
+        channel: 1
+        key: 32
+        velocity:
+          min: 64
+          
+    required_preconditions: # Not yet implemented, won't work 
+      - type: midi
+        data:
+          condition_type: control
+          channel: 1
+          control: 42
+          value:
+            max: 32
+        
+    actions: 
+      - type: enter_text
+        data:
+          text: "Hello world!"
+          count: 2
 ```
 
 This example specifies a scope for gedit, a text editor, in which it will enter the sequence "ctrl+t" when key 33 is
