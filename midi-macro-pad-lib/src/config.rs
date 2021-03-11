@@ -1,63 +1,43 @@
+use raw_config::RawConfig;
+
+use crate::macros::Macro;
+
 pub mod yaml_config_parser;
+pub mod raw_config;
 
 extern crate yaml_rust;
 
-use linked_hash_map::LinkedHashMap;
-use crate::macros::{Scope, Macro};
-
-/*
-
-Design for configs:
-
-- A trait: ConfigInput {
-  as_raw_config(&self) -> RawConfig
-}
-
-- RawConfigValue = a generic enum that roughly matches the types in common with yaml or json:
-    - Integer (not dealing with floats at this time, any float converted to int)
-    - String
-    - Boolean
-    - Array (of more RawConfigValues)
-    - Hash (LinkedHashMap from linked-hash-map crate
-    - Null
-
- ---
-
- YamlConfigParser:
-
-    loads config from string
-    implements ConfigInput's as_raw_config (which clones any data)
- */
-
 // Should be implemented by YamlConfigParser, JSONConfigParser, or what have you
-trait ConfigInput {
-    fn as_raw_config(&self) -> RawConfig;
+pub trait ConfigInput {
+    fn as_raw_config(&self) -> Result<RawConfig, ConfigError>;
 }
 
-#[derive(Debug)]
-enum RawConfig {
-    Null,
-    Integer(i64),
-    String(String),
-    Boolean(bool),
-    Array(Vec<RawConfig>),
-    Hash(LinkedHashMap<RawConfig, RawConfig>),
+pub struct Config {
+    pub macros: Vec<Macro>
 }
 
-pub struct Config<'a> {
-    version: usize,
-    scopes: Vec<Scope<'a>>,
-    macros: Vec<Macro<'a>>
-}
-
-enum ConfigError {
-    // TODO: as I implement parsing, figure out different sorts of errors
+pub enum ConfigError {
+    FormatError(String, Loc),
+    UnsupportedVersion(String),
     InvalidConfig(String)
 }
 
-impl RawConfig {
-    //pub fn process() -> Result<Config, ConfigError> {
-        // TODO
-    //}
+impl ConfigError {
+    pub fn description(&self) -> String {
+        String::from(match self {
+            ConfigError::FormatError(desc, _loc) => {
+                desc
+                // TODO incorporate loc in description output
+            }
+
+            ConfigError::UnsupportedVersion(desc) => desc,
+            ConfigError::InvalidConfig(desc) => desc,
+        })
+    }
+}
+
+pub struct Loc {
+    pub line: usize,
+    pub col: usize
 }
 
