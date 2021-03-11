@@ -8,7 +8,7 @@ pub enum MidiEventMatcher {
     ControlChange { channel_match: NumMatch, control_match: NumMatch, value_match: NumMatch },
     ProgramChange { channel_match: NumMatch, program_match: NumMatch },
     ChannelAftertouch { channel_match: NumMatch, value_match: NumMatch },
-    PitchBendRange { channel_match: NumMatch, value_match: NumMatch },
+    PitchBendChange { channel_match: NumMatch, value_match: NumMatch },
 }
 
 impl MatchChecker<MidiMessage> for MidiEventMatcher {
@@ -86,7 +86,7 @@ impl MatchChecker<MidiMessage> for MidiEventMatcher {
                 }
             }
 
-            MidiEventMatcher::PitchBendRange { channel_match, value_match } => {
+            MidiEventMatcher::PitchBendChange { channel_match, value_match } => {
                 match val {
                     MidiMessage::PitchBendChange { channel, value} => {
                         channel_match.matches(&u32::from(*channel))
@@ -408,7 +408,7 @@ mod tests {
 
     #[test]
     fn midi_event_match_pitch_bend_range() {
-        let matcher = MidiEventMatcher::PitchBendRange {
+        let matcher = MidiEventMatcher::PitchBendChange {
             channel_match: Some(NumberMatcher::Val(1)),
             value_match: Some(NumberMatcher::Range { min: Some(32), max: Some(38) }),
         };
