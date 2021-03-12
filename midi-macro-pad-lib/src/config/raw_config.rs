@@ -1,3 +1,5 @@
+//! Intermediary config value format and tools to parse `RawConfig` into full formed `Config`
+
 mod version1_processor;
 
 use std::fmt::{self, Display, Formatter};
