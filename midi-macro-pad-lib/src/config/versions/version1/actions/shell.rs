@@ -153,3 +153,181 @@ pub fn build_action_shell(raw_data: Option<&RawConfig>) -> Result<Action, Config
         )))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::config::versions::version1::actions::shell::build_action_shell;
+    use crate::config::raw_config::{RawConfig, RCHash, k};
+    use crate::macros::actions::Action;
+
+    #[test]
+    fn returns_error_if_no_data_is_provided() {
+        let action = build_action_shell(None);
+        assert!(action.is_err());
+    }
+
+    #[test]
+    fn builds_shell_action_from_simple_form() {
+        let action = build_action_shell(Some(&RawConfig::String("cmd".to_string())))
+            .ok().unwrap();
+
+        assert_eq!(
+            action,
+            Action::Shell { command: "cmd".to_string(), args: None, env_vars: None }
+        );
+    }
+
+    #[test]
+    fn returns_error_if_data_is_neither_string_nor_hash() {
+        let action = build_action_shell(Some(&RawConfig::Null));
+        assert!(action.is_err());
+    }
+
+    #[test]
+    fn builds_shell_action_from_hash_with_only_command() {
+        let mut hash = RCHash::new();
+        hash.insert(k("command"), k("cmd"));
+
+        let action = build_action_shell(Some(&RawConfig::Hash(hash)))
+            .ok().unwrap();
+
+        assert_eq!(
+            action,
+            Action::Shell { command: "cmd".to_string(), args: None, env_vars: None}
+        );
+    }
+
+    #[test]
+    fn returns_error_if_data_is_hash_and_command_is_missing() {
+        let mut hash = RCHash::new();
+        hash.insert(k("args"), RawConfig::Array(vec![
+            RawConfig::String("arg1".to_string())
+        ]));
+
+        let action = build_action_shell(Some(&RawConfig::Hash(hash)));
+        assert!(action.is_err());
+    }
+
+    #[test]
+    fn builds_shell_action_with_string_and_int_args() {
+        let args = RawConfig::Array(vec![
+            RawConfig::String("arg1".to_string()),
+            RawConfig::Integer(7),
+            RawConfig::String("arg3".to_string()),
+        ]);
+
+        let mut hash = RCHash::new();
+        hash.insert(k("command"), k("cmd"));
+        hash.insert(k("args"), args);
+
+        let action = build_action_shell(Some(&RawConfig::Hash(hash)))
+            .ok().unwrap();
+
+        assert_eq!(
+            action,
+            Action::Shell {
+                command: "cmd".to_string(),
+                args: Some(vec!["arg1".to_string(), 7.to_string(), "arg3".to_string()]),
+                env_vars: None,
+            }
+        );
+    }
+
+    #[test]
+    fn returns_error_if_args_contains_values_other_than_string_or_int() {
+        let args = RawConfig::Array(vec![
+            RawConfig::String("arg1".to_string()),
+            RawConfig::Null,
+        ]);
+
+        let mut hash = RCHash::new();
+        hash.insert(k("command"), k("cmd"));
+        hash.insert(k("args"), args);
+
+        let action = build_action_shell(Some(&RawConfig::Hash(hash)));
+        assert!(action.is_err());
+    }
+
+    #[test]
+    fn builds_shell_action_with_env_vars() {
+        let mut env_vars_hash = RCHash::new();
+        env_vars_hash.insert(k("env1"), k("val1"));
+        env_vars_hash.insert(k("env2"), k("val2"));
+
+        let mut hash = RCHash::new();
+        hash.insert(k("command"), k("cmd"));
+        hash.insert(k("env_vars"), RawConfig::Hash(env_vars_hash));
+
+        let action = build_action_shell(Some(&RawConfig::Hash(hash)))
+            .ok().unwrap();
+
+        assert_eq!(
+            action,
+            Action::Shell {
+                command: "cmd".to_string(),
+                args: None,
+                env_vars: Some(vec![
+                    ("env1".to_string(), "val1".to_string()),
+                    ("env2".to_string(), "val2".to_string())
+                ])
+            }
+        );
+    }
+
+    #[test]
+    fn returns_error_if_any_env_var_key_or_value_is_not_string_or_int() {
+        let mut env_vars_hash_key_wrong = RCHash::new();
+        env_vars_hash_key_wrong.insert(RawConfig::Bool(true), k("val1"));
+
+        let mut hash_key_wrong = RCHash::new();
+        hash_key_wrong.insert(k("command"), k("cmd"));
+        hash_key_wrong.insert(k("env_vars"), RawConfig::Hash(env_vars_hash_key_wrong));
+
+        let action_key_wrong = build_action_shell(Some(&RawConfig::Hash(hash_key_wrong)));
+
+        assert!(action_key_wrong.is_err());
+
+        let mut env_vars_hash_val_wrong = RCHash::new();
+        env_vars_hash_val_wrong.insert(k("arg1"),RawConfig::Bool(true));
+
+        let mut hash_val_wrong = RCHash::new();
+        hash_val_wrong.insert(k("command"), k("cmd"));
+        hash_val_wrong.insert(k("env_vars"), RawConfig::Hash(env_vars_hash_val_wrong));
+
+        let action_val_wrong = build_action_shell(Some(&RawConfig::Hash(hash_val_wrong)));
+
+        assert!(action_val_wrong.is_err());
+    }
+
+    #[test]
+    fn builds_shell_action_with_args_and_env_vars() {
+        let mut hash = RCHash::new();
+        hash.insert(k("command"), k("cmd"));
+
+        hash.insert(k("args"), RawConfig::Array(vec![
+            RawConfig::String("arg1".to_string()),
+            RawConfig::Integer(4)
+        ]));
+
+        let mut env_vars_hash = RCHash::new();
+        env_vars_hash.insert(k("env1"), k("val1"));
+        env_vars_hash.insert(k("env2"), RawConfig::Integer(7));
+
+        hash.insert(k("env_vars"), RawConfig::Hash(env_vars_hash));
+
+        let action = build_action_shell(Some(&RawConfig::Hash(hash)))
+            .ok().unwrap();
+
+        assert_eq!(
+            action,
+            Action::Shell {
+                command: "cmd".to_string(),
+                args: Some(vec!["arg1".to_string(), 4.to_string()]),
+                env_vars: Some(vec![
+                    ("env1".to_string(), "val1".to_string()),
+                    ("env2".to_string(), 7.to_string())
+                ])
+            }
+        );
+    }
+}
