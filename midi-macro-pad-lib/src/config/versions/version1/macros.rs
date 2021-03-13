@@ -162,3 +162,368 @@ fn build_macro(raw_macro: &RCHash, scope: Option<Scope>) -> Result<Macro, Config
     Ok(macro_builder.build())
 }
 
+#[cfg(test)]
+mod tests {
+    use crate::config::raw_config::{RCHash, k, RawConfig};
+    use crate::config::versions::version1::macros::{build_macro, build_scope_macros};
+    use crate::macros::{Macro, Scope};
+    use crate::macros::event_matching::{EventMatcher, MatcherType};
+    use crate::macros::event_matching::midi::MidiEventMatcher;
+    use crate::macros::actions::Action;
+    use crate::config::versions::version1::scope::build_scope;
+    use crate::match_checker::StringMatcher;
+
+    #[test]
+    fn build_macro_returns_an_error_if_no_matching_events_are_specified() {
+        let mut hash = RCHash::new();
+
+        let mut enter_text_hash = RCHash::new();
+        enter_text_hash.insert(k("type"), k("enter_text"));
+        enter_text_hash.insert(k("data"), k("Hello"));
+
+        hash.insert(k("actions"), RawConfig::Array(vec![
+            RawConfig::Hash(enter_text_hash)
+        ]));
+
+        let broken_macro = build_macro(&hash, None);
+        assert!(broken_macro.is_err());
+
+        // Specified but empty array
+        let mut hash = RCHash::new();
+        hash.insert(k("matching_events"), RawConfig::Array(vec![]));
+
+        let mut enter_text_hash = RCHash::new();
+        enter_text_hash.insert(k("type"), k("enter_text"));
+        enter_text_hash.insert(k("data"), k("Hello"));
+
+        hash.insert(k("actions"), RawConfig::Array(vec![
+            RawConfig::Hash(enter_text_hash)
+        ]));
+
+        let broken_macro = build_macro(&hash, None);
+        assert!(broken_macro.is_err());
+    }
+
+    #[test]
+    fn build_macro_returns_an_error_if_no_actions_are_specified() {
+        let mut hash = RCHash::new();
+
+        let mut evt_hash = RCHash::new();
+        evt_hash.insert(k("type"), k("midi"));
+
+        let mut note_on_hash = RCHash::new();
+        note_on_hash.insert(k("message_type"), k("note_on"));
+
+        evt_hash.insert(k("data"), RawConfig::Hash(note_on_hash));
+
+        hash.insert(k("matching_events"), RawConfig::Array(vec![
+            RawConfig::Hash(evt_hash)
+        ]));
+
+        let broken_macro = build_macro(&hash, None);
+        assert!(broken_macro.is_err());
+
+        // Specified but empty array
+        let mut hash = RCHash::new();
+
+        let mut evt_hash = RCHash::new();
+        evt_hash.insert(k("type"), k("midi"));
+
+        let mut note_on_hash = RCHash::new();
+        note_on_hash.insert(k("message_type"), k("note_on"));
+
+        evt_hash.insert(k("data"), RawConfig::Hash(note_on_hash));
+
+        hash.insert(k("matching_events"), RawConfig::Array(vec![
+            RawConfig::Hash(evt_hash)
+        ]));
+
+        hash.insert(k("actions"), RawConfig::Array(vec![]));
+
+        let broken_macro = build_macro(&hash, None);
+        assert!(broken_macro.is_err());
+    }
+
+    #[test]
+    fn returns_error_if_invalid_event_matcher_data_specified() {
+        let mut hash = RCHash::new();
+
+        let mut evt_hash = RCHash::new();
+        evt_hash.insert(k("type"), k("invalid-event-type"));
+
+        hash.insert(k("matching_events"), RawConfig::Array(vec![
+            RawConfig::Hash(evt_hash)
+        ]));
+
+        let mut enter_text_hash = RCHash::new();
+        enter_text_hash.insert(k("type"), k("enter_text"));
+        enter_text_hash.insert(k("data"), k("Hello"));
+
+        hash.insert(k("actions"), RawConfig::Array(vec![
+            RawConfig::Hash(enter_text_hash)
+        ]));
+
+        let broken_macro = build_macro(&hash, None);
+        assert!(broken_macro.is_err());
+    }
+
+    #[test]
+    fn returns_error_if_invalid_action_data_specified() {
+        let mut hash = RCHash::new();
+
+        let mut evt_hash = RCHash::new();
+        evt_hash.insert(k("type"), k("midi"));
+        let mut note_on_hash = RCHash::new();
+        note_on_hash.insert(k("message_type"), k("note_on"));
+        evt_hash.insert(k("data"), RawConfig::Hash(note_on_hash));
+
+        hash.insert(k("matching_events"), RawConfig::Array(vec![
+            RawConfig::Hash(evt_hash)
+        ]));
+
+        let mut invalid_action_hash = RCHash::new();
+        invalid_action_hash.insert(k("type"), k("invalid-action"));
+
+        hash.insert(k("actions"), RawConfig::Array(vec![
+            RawConfig::Hash(invalid_action_hash)
+        ]));
+
+        let broken_macro = build_macro(&hash, None);
+        assert!(broken_macro.is_err());
+    }
+
+    #[test]
+    fn builds_minimal_macro() {
+        let mut hash = RCHash::new();
+
+        let mut evt_hash = RCHash::new();
+        evt_hash.insert(k("type"), k("midi"));
+        let mut note_on_hash = RCHash::new();
+        note_on_hash.insert(k("message_type"), k("note_on"));
+        evt_hash.insert(k("data"), RawConfig::Hash(note_on_hash));
+
+        let mut action_hash = RCHash::new();
+        action_hash.insert(k("type"), k("enter_text"));
+        action_hash.insert(k("data"), k("Hello"));
+
+        hash.insert(k("matching_events"), RawConfig::Array(vec![
+            RawConfig::Hash(evt_hash)
+        ]));
+
+        hash.insert(k("actions"), RawConfig::Array(vec![
+            RawConfig::Hash(action_hash)
+        ]));
+
+        let simple_macro = build_macro(&hash, None)
+            .ok().unwrap();
+
+        assert_eq!(
+            simple_macro,
+
+            Macro {
+                name: None,
+                match_events: vec![
+                    EventMatcher  {
+                        matcher: MatcherType::Midi(MidiEventMatcher::NoteOn {
+                            channel_match: None,
+                            key_match: None,
+                            velocity_match: None,
+                        }),
+
+                        required_preconditions: None
+                    }
+                ],
+                required_preconditions: None,
+                actions: vec![
+                    Action::EnterText("Hello".to_string(), 1)
+                ],
+                scope: None
+            }
+        );
+    }
+
+    #[test]
+    fn builds_macro_with_all_optional_fields() {
+        let mut hash = RCHash::new();
+
+        let mut evt_hash = RCHash::new();
+        evt_hash.insert(k("type"), k("midi"));
+        let mut note_on_hash = RCHash::new();
+        note_on_hash.insert(k("message_type"), k("note_on"));
+        evt_hash.insert(k("data"), RawConfig::Hash(note_on_hash));
+
+        let mut action_hash = RCHash::new();
+        action_hash.insert(k("type"), k("enter_text"));
+        action_hash.insert(k("data"), k("Hello"));
+
+        hash.insert(k("matching_events"), RawConfig::Array(vec![
+            RawConfig::Hash(evt_hash)
+        ]));
+
+        hash.insert(k("actions"), RawConfig::Array(vec![
+            RawConfig::Hash(action_hash)
+        ]));
+
+        hash.insert(k("name"), k("test macro"));
+
+        hash.insert(k("required_preconditions"), RawConfig::Array(vec![
+            RawConfig::Null,
+            RawConfig::Null
+        ]));
+
+        let mut scope_hash = RCHash::new();
+        let mut string_matcher_hash = RCHash::new();
+        string_matcher_hash.insert(k("is"), k("match"));
+        scope_hash.insert(k("window_name"), RawConfig::Hash(string_matcher_hash));
+
+        let scope = build_scope(&scope_hash).ok().unwrap().unwrap();
+
+        let proper_macro = build_macro(&hash, Some(scope))
+            .ok().unwrap();
+
+        assert_eq!(
+            proper_macro,
+
+            Macro {
+                name: Some("test macro".to_string()),
+                match_events: vec![
+                    EventMatcher  {
+                        matcher: MatcherType::Midi(MidiEventMatcher::NoteOn {
+                            channel_match: None,
+                            key_match: None,
+                            velocity_match: None,
+                        }),
+
+                        required_preconditions: None
+                    }
+                ],
+                required_preconditions: None,
+                actions: vec![
+                    Action::EnterText("Hello".to_string(), 1)
+                ],
+
+                scope: Some(Scope {
+                    window_class: None,
+                    window_name: Some(StringMatcher::Is("match".to_string()))
+                })
+            }
+        );
+    }
+
+    #[test]
+    fn attaches_scopes_to_list_of_macros() {
+        let mut hash1 = RCHash::new();
+
+        let mut evt_hash = RCHash::new();
+        evt_hash.insert(k("type"), k("midi"));
+        let mut note_on_hash = RCHash::new();
+        note_on_hash.insert(k("message_type"), k("note_on"));
+        evt_hash.insert(k("data"), RawConfig::Hash(note_on_hash));
+
+        let mut action_hash = RCHash::new();
+        action_hash.insert(k("type"), k("enter_text"));
+        action_hash.insert(k("data"), k("Hello1"));
+
+        hash1.insert(k("matching_events"), RawConfig::Array(vec![
+            RawConfig::Hash(evt_hash)
+        ]));
+
+        hash1.insert(k("actions"), RawConfig::Array(vec![
+            RawConfig::Hash(action_hash)
+        ]));
+
+
+        let mut hash2 = RCHash::new();
+
+        let mut evt_hash = RCHash::new();
+        evt_hash.insert(k("type"), k("midi"));
+        let mut note_on_hash = RCHash::new();
+        note_on_hash.insert(k("message_type"), k("note_off"));
+        evt_hash.insert(k("data"), RawConfig::Hash(note_on_hash));
+
+        let mut action_hash = RCHash::new();
+        action_hash.insert(k("type"), k("enter_text"));
+        action_hash.insert(k("data"), k("Hello2"));
+
+        hash2.insert(k("matching_events"), RawConfig::Array(vec![
+            RawConfig::Hash(evt_hash)
+        ]));
+
+        hash2.insert(k("actions"), RawConfig::Array(vec![
+            RawConfig::Hash(action_hash)
+        ]));
+
+
+        let mut scope_hash = RCHash::new();
+        let mut string_matcher_hash = RCHash::new();
+        string_matcher_hash.insert(k("is"), k("match"));
+        scope_hash.insert(k("window_name"), RawConfig::Hash(string_matcher_hash));
+
+        let scope = build_scope(&scope_hash).ok().unwrap().unwrap();
+
+        let macro_list = build_scope_macros(
+            &vec![RawConfig::Hash(hash1), RawConfig::Hash(hash2)],
+            Some(scope)
+        ).ok().unwrap();
+
+        assert_eq!(
+
+            macro_list,
+
+            vec![
+                Macro {
+                    name: None,
+                    match_events: vec![
+                        EventMatcher  {
+                            matcher: MatcherType::Midi(MidiEventMatcher::NoteOn {
+                                channel_match: None,
+                                key_match: None,
+                                velocity_match: None,
+                            }),
+
+                            required_preconditions: None
+                        }
+                    ],
+
+                    required_preconditions: None,
+
+                    actions: vec![
+                        Action::EnterText("Hello1".to_string(), 1)
+                    ],
+
+                    scope: Some(Scope {
+                        window_class: None,
+                        window_name: Some(StringMatcher::Is("match".to_string()))
+                    })
+                },
+
+
+                Macro {
+                    name: None,
+                    match_events: vec![
+                        EventMatcher  {
+                            matcher: MatcherType::Midi(MidiEventMatcher::NoteOff {
+                                channel_match: None,
+                                key_match: None,
+                                velocity_match: None,
+                            }),
+
+                            required_preconditions: None
+                        }
+                    ],
+
+                    required_preconditions: None,
+
+                    actions: vec![
+                        Action::EnterText("Hello2".to_string(), 1)
+                    ],
+
+                    scope: Some(Scope {
+                        window_class: None,
+                        window_name: Some(StringMatcher::Is("match".to_string()))
+                    })
+                },
+            ]
+        );
+    }
+}

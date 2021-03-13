@@ -117,12 +117,13 @@ impl <'a> MacroBuilder {
     }
 }
 
+#[derive(PartialEq, Debug)]
 pub struct Macro {
-    name: Option<String>,
-    match_events: Vec<EventMatcher>,
-    required_preconditions: Option<Vec<Precondition>>,
-    actions: Vec<Action>,
-    scope: Option<Scope>
+    pub(crate) name: Option<String>,
+    pub(crate) match_events: Vec<EventMatcher>,
+    pub(crate) required_preconditions: Option<Vec<Precondition>>,
+    pub(crate) actions: Vec<Action>,
+    pub(crate) scope: Option<Scope>
 }
 
 impl Macro {
