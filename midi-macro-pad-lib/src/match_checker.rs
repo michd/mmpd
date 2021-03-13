@@ -4,7 +4,7 @@ pub trait MatchChecker<T> {
     fn matches(&self, val: &T) -> bool;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum StringMatcher {
     Is(String),
     Contains(String),
@@ -13,6 +13,55 @@ pub enum StringMatcher {
     Regex(Regex)
 }
 
+impl PartialEq for StringMatcher {
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            StringMatcher::Is(s) => {
+                if let StringMatcher::Is(other_s) = other {
+                    s == other_s
+                } else {
+                    false
+                }
+            }
+
+            StringMatcher::Contains(s) => {
+                if let StringMatcher::Contains(other_s) = other {
+                    s == other_s
+                } else {
+                    false
+                }
+            }
+
+            StringMatcher::StartsWith(s) => {
+                if let StringMatcher::StartsWith(other_s) = other {
+                    s == other_s
+                } else {
+                    false
+                }
+            }
+
+            StringMatcher::EndsWith(s) => {
+                if let StringMatcher::EndsWith(other_s) = other {
+                    s == other_s
+                } else {
+                    false
+                }
+            }
+
+            StringMatcher::Regex(r) => {
+                if let StringMatcher::Regex(other_r) = other {
+                    r.as_str() == other_r.as_str()
+                } else {
+                    false
+                }
+            }
+        }
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        !self.eq(other)
+    }
+}
 // TODO unit test
 impl MatchChecker<&str> for StringMatcher {
     fn matches(&self, val: &&str) -> bool {
@@ -28,6 +77,7 @@ impl MatchChecker<&str> for StringMatcher {
 
 // For the time being this is hardcoded with u32, but could potentially be made more flexible with
 // a type parameter constrained to the PartialOrd trait.
+#[derive(PartialEq, Debug)]
 pub enum NumberMatcher {
     Any,
     Range { min: Option<u32>, max: Option<u32> },
