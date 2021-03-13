@@ -9,3 +9,9 @@ use crate::config::ConfigError;
 pub (crate) fn build_precondition(_raw_precondition: &RCHash) -> Result<Precondition, ConfigError> {
     Ok(Precondition::new())
 }
+
+#[cfg(test)]
+mod tests {
+    // TODO once preconditions are implemented
+}
+

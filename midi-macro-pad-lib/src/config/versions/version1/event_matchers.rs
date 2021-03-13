@@ -84,3 +84,109 @@ pub (crate) fn build_event_matcher(raw_event_matcher: &RCHash) -> Result<EventMa
         )
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::config::raw_config::{RCHash, k, RawConfig};
+    use crate::config::versions::version1::event_matchers::build_event_matcher;
+    use crate::macros::event_matching::{EventMatcher, MatcherType};
+    use crate::macros::event_matching::midi::MidiEventMatcher;
+    use crate::macros::preconditions::Precondition;
+
+    #[test]
+    fn returns_error_if_missing_type_field() {
+        let data_hash = RCHash::new();
+
+        let mut hash = RCHash::new();
+        hash.insert(k("data"), RawConfig::Hash(data_hash));
+
+        let matcher = build_event_matcher(&hash);
+        assert!(matcher.is_err());
+    }
+
+    #[test]
+    fn return_error_if_type_is_an_unsupported_value() {
+        let data_hash = RCHash::new();
+
+        let mut hash = RCHash::new();
+        hash.insert(k("type"), k("unsupported-type-value"));
+        hash.insert(k("data"), RawConfig::Hash(data_hash));
+
+        let matcher = build_event_matcher(&hash);
+        assert!(matcher.is_err());
+    }
+
+    #[test]
+    fn builds_midi_event_matcher() {
+        let mut data_hash = RCHash::new();
+        data_hash.insert(k("message_type"), k("note_on"));
+
+        let mut hash = RCHash::new();
+        hash.insert(k("type"), k("midi"));
+        hash.insert(k("data"), RawConfig::Hash(data_hash));
+
+        let matcher = build_event_matcher(&hash)
+            .ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            EventMatcher {
+                matcher: MatcherType::Midi(MidiEventMatcher::NoteOn {
+                    channel_match: None,
+                    key_match: None,
+                    velocity_match: None
+                }),
+
+                required_preconditions: None
+            }
+        );
+    }
+
+    #[test]
+    fn returns_an_error_if_data_for_underlying_matcher_is_invalid() {
+        let mut data_hash = RCHash::new();
+        data_hash.insert(k("message_type"), k("invalid_message_type"));
+
+        let mut hash = RCHash::new();
+        hash.insert(k("type"), k("midi"));
+        hash.insert(k("data"), RawConfig::Hash(data_hash));
+
+        let matcher = build_event_matcher(&hash);
+        assert!(matcher.is_err());
+    }
+
+    #[test]
+    fn builds_an_event_matcher_with_preconditions() {
+        let mut data_hash = RCHash::new();
+        data_hash.insert(k("message_type"), k("note_on"));
+
+        let mut hash = RCHash::new();
+        hash.insert(k("type"), k("midi"));
+        hash.insert(k("data"), RawConfig::Hash(data_hash));
+        hash.insert(k("required_preconditions"), RawConfig::Array(vec![
+            RawConfig::Hash(RCHash::new()),
+            RawConfig::Hash(RCHash::new()),
+            RawConfig::Hash(RCHash::new()),
+        ]));
+
+        let matcher = build_event_matcher(&hash)
+            .ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            EventMatcher {
+                matcher: MatcherType::Midi(MidiEventMatcher::NoteOn {
+                    channel_match: None,
+                    key_match: None,
+                    velocity_match: None
+                }),
+
+                required_preconditions: Some(vec![
+                    Precondition {},
+                    Precondition {},
+                    Precondition {}
+                ])
+            }
+        );
+    }
+}

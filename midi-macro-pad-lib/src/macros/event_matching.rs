@@ -9,9 +9,10 @@ pub mod midi;
 /// An eventMatcher includes a matcher to validate whether a given event
 /// matches that what is defined, as well as an optional list of preconditions that
 /// must be satisfied for the entire event to match.
+#[derive(PartialEq, Debug)]
 pub struct EventMatcher {
-    matcher: MatcherType,
-    required_preconditions: Option<Vec<Precondition>>
+    pub (crate) matcher: MatcherType,
+    pub (crate) required_preconditions: Option<Vec<Precondition>>
 }
 
 impl EventMatcher {
@@ -48,6 +49,7 @@ impl EventMatcher {
 /// Wrapping type enumerating any supported event matchers.
 /// Mainly used as a single access point to match a analogously genericized event
 /// against, using the MatchChecker implementation.
+#[derive(PartialEq, Debug)]
 pub enum MatcherType {
     /// Checks against Event::Midi events
     Midi(MidiEventMatcher),
