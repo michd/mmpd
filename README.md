@@ -33,7 +33,6 @@ including some future plans.
 
 ## To do:
 
-- Write documentation in configuration parsing code
 - Extensively cover configuration parsing in unit tests
 - Build out command line interface (defaulting to config file etc)
 - Allow specifying midi input name pattern in config file

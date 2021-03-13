@@ -427,7 +427,7 @@ Other top level namespaces may be added to expose more available data, or provid
 ```yaml
 version: 1
 
-scopes: [
+scopes:
   - window_class:
       contains: "gedit"
     macros: 
@@ -436,7 +436,7 @@ scopes: [
             data:
               message_type: note_on
               key: 33
-        actions: [
+        actions:
           - type: key_sequence,
             data:
               sequence: "ctrl+t"
