@@ -1,29 +1,30 @@
 //! Parses YAML string into YAML representation tree, into `RawConfig` tree
 
 use std::str::FromStr;
-use crate::config::{ConfigError, ConfigInput, Loc};
-use crate::config::raw_config::RawConfig;
-extern crate yaml_rust;
+
 use yaml_rust::{Yaml, YamlLoader};
 
-/// Config input parser, parsing YAML into `RawConfig`.
-pub struct YamlConfigParser<'a> {
-    /// Full config file contents
-    input: &'a str
-}
+use crate::config::{ConfigError, Loc};
+use crate::config::input_formats::ConfigInputParser;
+use crate::config::raw_config::RawConfig;
 
-impl YamlConfigParser<'_> {
+extern crate yaml_rust;
+
+/// Config input parser, parsing YAML into `RawConfig`.
+pub struct YamlConfigInput { }
+
+impl YamlConfigInput {
     /// Creates a new parser instance from the full text contents of the configuration file
-    pub fn new(input: &str) -> YamlConfigParser {
-        YamlConfigParser { input }
+    pub fn new() -> Box<dyn ConfigInputParser> {
+        Box::new(YamlConfigInput {})
     }
 }
 
-impl ConfigInput for YamlConfigParser<'_> {
+impl ConfigInputParser for YamlConfigInput {
     /// Attempts parsing the YAML file contents into the intermediary `RawConfig` format.
     /// If anything about it fails, returns a `ConfigError`.
-    fn as_raw_config(&self) -> Result<RawConfig, ConfigError> {
-        let mut yaml = YamlLoader::load_from_str(self.input).map_err(|err| {
+    fn parse(&self, raw_input: &str) -> Result<RawConfig, ConfigError> {
+        let mut yaml = YamlLoader::load_from_str(raw_input).map_err(|err| {
            ConfigError::FormatError(
                err.to_string(),
                Loc { line: err.marker().line(), col: err.marker().col() }

@@ -1,20 +1,11 @@
 //! The Config module contains everything required to parse a config file (in YAML, perhaps later
 //! other types) into a fully formed Config object, ready to be used by the main application.
 
-use raw_config::RawConfig;
 use crate::macros::Macro;
 
-pub mod yaml_config_parser;
 pub mod raw_config;
-
-/// "Low level" parsers that parse into RawConfig should implement this. For example,
-/// YAML, TOML or JSON parsers. They parse into the intermediary RawConfig format, which
-/// is then further processed into our relevant data structures.
-pub trait ConfigInput {
-    /// Attempts parsing the configuration file contents into the intermediary `RawConfig` format.
-    /// If anything about it fails, returns a `ConfigError`.
-    fn as_raw_config(&self) -> Result<RawConfig, ConfigError>;
-}
+pub mod input_formats;
+pub mod versions;
 
 /// Configuration owner used by the main program. An instance of this holds all data that gets
 /// parsed from a configuration file into relevant data structures like `Macro`.

@@ -2,13 +2,13 @@ use std::{env, fs};
 use std::vec::Vec;
 
 use midi_macro_pad_lib::{focus, state};
+use midi_macro_pad_lib::config::Config;
+use midi_macro_pad_lib::config::input_formats::get_parser_for_extension;
 use midi_macro_pad_lib::macros::actions::ActionRunner;
+use midi_macro_pad_lib::macros::event_matching::Event;
 use midi_macro_pad_lib::macros::event_matching::midi::MidiEventMatcher;
 use midi_macro_pad_lib::match_checker::{MatchChecker, NumberMatcher};
 use midi_macro_pad_lib::midi;
-use midi_macro_pad_lib::macros::event_matching::Event;
-use midi_macro_pad_lib::config::yaml_config_parser::YamlConfigParser;
-use midi_macro_pad_lib::config::{ConfigInput, Config};
 
 fn main() {
     println!("MIDI Macro Pad starting.");
@@ -155,8 +155,8 @@ fn task_listen(port_pattern: Option<&String>) -> () {
 fn get_config() -> Option<Config> {
     let filename = "testcfg.yml";
     let config_text = fs::read_to_string(filename).unwrap();
-    let parser = YamlConfigParser::new(&config_text);
-    let raw_config = parser.as_raw_config();
+    let parser = get_parser_for_extension("yml").unwrap();
+    let raw_config = parser.parse(&config_text);
 
     if let Ok(rc) = raw_config {
         match rc.process() {
