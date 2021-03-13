@@ -39,11 +39,7 @@ pub (crate) fn build_scope(raw_scope: &RCHash) -> Result<Option<Scope>, ConfigEr
         raw_scope.get_hash(WINDOW_NAME_FIELD)
     )?;
 
-    let has_any_matchers = vec![&window_class_matcher, &window_name_matcher]
-        .iter()
-        .any(|matcher| matcher.is_some());
-
-    Ok(if has_any_matchers {
+    Ok(if window_class_matcher.is_some() || window_name_matcher.is_some() {
         Some(
             Scope::new(window_class_matcher, window_name_matcher)
         )
