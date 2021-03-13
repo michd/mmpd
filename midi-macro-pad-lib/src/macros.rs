@@ -25,7 +25,7 @@ impl Scope {
 
 pub struct MacroBuilder {
     name: Option<String>,
-    match_events: Vec<Box<EventMatcher>>,
+    match_events: Vec<EventMatcher>,
     required_preconditions: Option<Vec<Precondition>>,
     actions: Vec<Action>,
     scope: Option<Scope>
@@ -33,7 +33,7 @@ pub struct MacroBuilder {
 
 impl <'a> MacroBuilder {
     pub fn from_event_matcher(
-        event_matcher: Box<EventMatcher>
+        event_matcher: EventMatcher
     ) -> MacroBuilder {
         MacroBuilder {
             name: None,
@@ -45,7 +45,7 @@ impl <'a> MacroBuilder {
     }
 
     pub fn from_event_matchers(
-        event_matchers: Vec<Box<EventMatcher>>
+        event_matchers: Vec<EventMatcher>
     ) -> MacroBuilder {
         MacroBuilder {
             name: None,
@@ -56,12 +56,12 @@ impl <'a> MacroBuilder {
         }
     }
 
-    pub fn set_event_matchers(mut self, event_matchers: Vec<Box<EventMatcher>>) -> Self {
+    pub fn set_event_matchers(mut self, event_matchers: Vec<EventMatcher>) -> Self {
         self.match_events = event_matchers;
         self
     }
 
-    pub fn add_event_matcher(mut self, event_matcher: Box<EventMatcher>) -> Self {
+    pub fn add_event_matcher(mut self, event_matcher: EventMatcher) -> Self {
         self.match_events.push(event_matcher);
         self
     }
@@ -119,7 +119,7 @@ impl <'a> MacroBuilder {
 
 pub struct Macro {
     name: Option<String>,
-    match_events: Vec<Box<EventMatcher>>,
+    match_events: Vec<EventMatcher>,
     required_preconditions: Option<Vec<Precondition>>,
     actions: Vec<Action>,
     scope: Option<Scope>

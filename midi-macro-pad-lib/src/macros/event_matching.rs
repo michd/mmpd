@@ -2,6 +2,7 @@ use crate::match_checker::MatchChecker;
 use crate::midi::MidiMessage;
 use crate::macros::preconditions::Precondition;
 use crate::state::State;
+use crate::macros::event_matching::midi::MidiEventMatcher;
 
 pub mod midi;
 
@@ -49,7 +50,7 @@ impl EventMatcher {
 /// against, using the MatchChecker implementation.
 pub enum MatcherType {
     /// Checks against Event::Midi events
-    Midi(Box<dyn MatchChecker<MidiMessage>>),
+    Midi(MidiEventMatcher),
 
     /// Checks against Event::Other events
     Other
@@ -104,13 +105,12 @@ mod tests {
         let state_box: Box<dyn State> = Box::new(state);
 
         let event_matcher = EventMatcher::new(
-            MatcherType::Midi(Box::new(
-                MidiEventMatcher::NoteOn {
+            MatcherType::Midi(MidiEventMatcher::NoteOn {
                     channel_match: Some(NumberMatcher::Val(1)),
                     key_match: Some(NumberMatcher::Val(20)),
                     velocity_match: Some(NumberMatcher::Val(100)),
                 }
-            )),
+            ),
 
             None
         );
@@ -131,13 +131,13 @@ mod tests {
 
 
         let event_matcher = EventMatcher::new(
-            MatcherType::Midi(Box::new(
+            MatcherType::Midi(
                 MidiEventMatcher::NoteOn {
                     channel_match: Some(NumberMatcher::Val(1)),
                     key_match: Some(NumberMatcher::Val(20)),
                     velocity_match: Some(NumberMatcher::Val(100)),
                 }
-            )),
+            ),
 
             None
         );
@@ -175,13 +175,13 @@ mod tests {
         let state_box: Box<dyn State> = Box::new(state);
 
         let event_matcher = EventMatcher::new(
-            MatcherType::Midi(Box::new(
+            MatcherType::Midi(
                 MidiEventMatcher::NoteOn {
                     channel_match: Some(NumberMatcher::Val(1)),
                     key_match: Some(NumberMatcher::Val(20)),
                     velocity_match: Some(NumberMatcher::Val(100)),
                 }
-            )),
+            ),
 
             None
         );

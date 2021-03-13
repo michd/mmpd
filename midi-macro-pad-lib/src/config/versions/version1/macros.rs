@@ -115,7 +115,7 @@ fn build_macro(raw_macro: &RCHash, scope: Option<Scope>) -> Result<Macro, Config
 
     let raw_preconditions = raw_macro.get_array(REQUIRED_PRECONDITIONS_FIELD);
 
-    let mut matching_events: Vec<Box<EventMatcher>> = vec![];
+    let mut matching_events: Vec<EventMatcher> = vec![];
     let mut required_preconditions: Vec<Precondition> = vec![];
     let mut actions: Vec<Action> = vec![];
 

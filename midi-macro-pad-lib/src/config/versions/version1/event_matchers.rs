@@ -42,10 +42,11 @@ use midi::build_midi_event_matcher;
 /// - Down the stream, a more specific event matcher (such as `MidiEventMatcher`) fails to be
 ///   constructed for any reason
 /// - Down the stream, a `Precondition` fails to be constructed for any reason
-pub (crate) fn build_event_matcher(raw_event_matcher: &RCHash) -> Result<Box<EventMatcher>, ConfigError> {
+pub (crate) fn build_event_matcher(raw_event_matcher: &RCHash) -> Result<EventMatcher, ConfigError> {
     const TYPE_FIELD: &str = "type";
     const DATA_FIELD: &str = "data";
     const REQUIRED_PRECONDITIONS_FIELD: &str = "required_preconditions";
+
     const TYPE_MIDI: &str = "midi";
 
     let event_type = raw_event_matcher.get_string(TYPE_FIELD).ok_or_else(|| {
@@ -68,7 +69,7 @@ pub (crate) fn build_event_matcher(raw_event_matcher: &RCHash) -> Result<Box<Eve
     let data = raw_event_matcher.get_hash(DATA_FIELD);
 
     let matcher_type: MatcherType = match event_type {
-        TYPE_MIDI => MatcherType::Midi(Box::new(build_midi_event_matcher(data)?)),
+        TYPE_MIDI => MatcherType::Midi(build_midi_event_matcher(data)?),
 
         _ => {
             return Err(ConfigError::InvalidConfig(
@@ -77,10 +78,9 @@ pub (crate) fn build_event_matcher(raw_event_matcher: &RCHash) -> Result<Box<Eve
         }
     };
 
-    Ok(Box::new(
-        EventMatcher::new(
+    Ok(EventMatcher::new(
             matcher_type,
             if preconditions.is_empty() { None } else { Some(preconditions) }
         )
-    ))
+    )
 }
