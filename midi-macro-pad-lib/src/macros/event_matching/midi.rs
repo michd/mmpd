@@ -1,6 +1,7 @@
 use crate::match_checker::{MatchChecker, NumMatch};
 use crate::midi::MidiMessage;
 
+#[derive(PartialEq, Debug)]
 pub enum MidiEventMatcher {
     NoteOn { channel_match: NumMatch, key_match: NumMatch, velocity_match: NumMatch },
     NoteOff { channel_match: NumMatch, key_match: NumMatch, velocity_match: NumMatch },

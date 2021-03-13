@@ -68,7 +68,7 @@ pub (crate) fn build_event_matcher(raw_event_matcher: &RCHash) -> Result<Box<Eve
     let data = raw_event_matcher.get_hash(DATA_FIELD);
 
     let matcher_type: MatcherType = match event_type {
-        TYPE_MIDI => MatcherType::Midi(build_midi_event_matcher(data)?),
+        TYPE_MIDI => MatcherType::Midi(Box::new(build_midi_event_matcher(data)?)),
 
         _ => {
             return Err(ConfigError::InvalidConfig(

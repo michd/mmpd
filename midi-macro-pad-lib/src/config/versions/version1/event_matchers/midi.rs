@@ -1,6 +1,4 @@
 use crate::config::raw_config::{RCHash, AccessHelpers, k};
-use crate::match_checker::MatchChecker;
-use crate::midi::MidiMessage;
 use crate::config::ConfigError;
 use crate::config::versions::version1::primitive_matchers::build_number_matcher;
 use crate::macros::event_matching::midi::MidiEventMatcher;
@@ -58,7 +56,7 @@ use crate::macros::event_matching::midi::MidiEventMatcher;
 /// - Downstream there is an issue constructing a number matcher for any reason
 pub fn build_midi_event_matcher(
     data: Option<&RCHash>
-) -> Result<Box<dyn MatchChecker<MidiMessage>>, ConfigError> {
+) -> Result<MidiEventMatcher, ConfigError> {
 
     const MESSAGE_TYPE_FIELD: &str = "message_type";
     const CHANNEL_FIELD: &str = "channel";
@@ -92,7 +90,7 @@ pub fn build_midi_event_matcher(
     let raw_channel_matcher = data.get(&k(CHANNEL_FIELD));
     let channel_match = build_number_matcher(raw_channel_matcher)?;
 
-    Ok(Box::new(match message_type {
+    Ok(match message_type {
         NOTE_ON_EVENT => {
             let raw_key_matcher = data.get(&k(KEY_FIELD));
             let raw_velocity_matcher = data.get(&k(VELOCITY_FIELD));
@@ -172,5 +170,283 @@ pub fn build_midi_event_matcher(
                 )
             ))
         }
-    }))
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::config::versions::version1::event_matchers::midi::build_midi_event_matcher;
+    use crate::config::raw_config::{RCHash, k, RawConfig};
+    use crate::macros::event_matching::midi::MidiEventMatcher;
+    use crate::match_checker::NumberMatcher;
+
+    #[test]
+    fn returns_an_error_if_no_data_is_given() {
+        let matcher = build_midi_event_matcher(None);
+        assert!(matcher.is_err());
+    }
+
+    #[test]
+    fn returns_an_error_if_message_type_field_is_missing() {
+        let mut hash = RCHash::new();
+        hash.insert(k("channel"), RawConfig::Integer(0));
+
+        let matcher = build_midi_event_matcher(Some(&hash));
+        assert!(matcher.is_err());
+    }
+
+    #[test]
+    fn returns_an_error_if_message_type_has_an_unknown_value() {
+        let mut hash = RCHash::new();
+        hash.insert(k("message_type"), k("unsupported-message-type"));
+
+        let matcher = build_midi_event_matcher(Some(&hash));
+        assert!(matcher.is_err());
+    }
+
+    #[test]
+    fn returns_an_error_if_an_invalid_number_matcher_is_specified() {
+        let mut hash = RCHash::new();
+        hash.insert(k("message_type"), k("note_on"));
+        hash.insert(k("channel"), RawConfig::Integer(-3)); // negative ints not allowed
+
+        let matcher = build_midi_event_matcher(Some(&hash));
+        assert!(matcher.is_err());
+    }
+
+    #[test]
+    fn builds_note_on_matcher() {
+        let mut hash = RCHash::new();
+        hash.insert(k("message_type"), k("note_on"));
+        hash.insert(k("channel"), RawConfig::Integer(0));
+        hash.insert(k("key"), RawConfig::Integer(20));
+        hash.insert(k("velocity"), RawConfig::Integer(40));
+
+        let matcher = build_midi_event_matcher(Some(&hash)).ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            MidiEventMatcher::NoteOn {
+                channel_match: Some(NumberMatcher::Val(0)),
+                key_match: Some(NumberMatcher::Val(20)),
+                velocity_match: Some(NumberMatcher::Val(40))
+            }
+        );
+
+        // Without any optional matchers
+        let mut hash = RCHash::new();
+        hash.insert(k("message_type"), k("note_on"));
+
+        let matcher = build_midi_event_matcher(Some(&hash)).ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            MidiEventMatcher::NoteOn {
+                channel_match: None,
+                key_match: None,
+                velocity_match: None
+            }
+        );
+    }
+
+    #[test]
+    fn builds_note_off_matcher() {
+        let mut hash = RCHash::new();
+        hash.insert(k("message_type"), k("note_off"));
+        hash.insert(k("channel"), RawConfig::Integer(0));
+        hash.insert(k("key"), RawConfig::Integer(20));
+        hash.insert(k("velocity"), RawConfig::Integer(40));
+
+        let matcher = build_midi_event_matcher(Some(&hash)).ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            MidiEventMatcher::NoteOff {
+                channel_match: Some(NumberMatcher::Val(0)),
+                key_match: Some(NumberMatcher::Val(20)),
+                velocity_match: Some(NumberMatcher::Val(40))
+            }
+        );
+
+        // Without any optional matchers
+        let mut hash = RCHash::new();
+        hash.insert(k("message_type"), k("note_off"));
+
+        let matcher = build_midi_event_matcher(Some(&hash)).ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            MidiEventMatcher::NoteOff {
+                channel_match: None,
+                key_match: None,
+                velocity_match: None
+            }
+        );
+    }
+
+    #[test]
+    fn build_poly_aftertouch_matcher() {
+        let mut hash = RCHash::new();
+        hash.insert(k("message_type"), k("poly_aftertouch"));
+        hash.insert(k("channel"), RawConfig::Integer(0));
+        hash.insert(k("key"), RawConfig::Integer(20));
+        hash.insert(k("value"), RawConfig::Integer(40));
+
+        let matcher = build_midi_event_matcher(Some(&hash)).ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            MidiEventMatcher::PolyAftertouch {
+                channel_match: Some(NumberMatcher::Val(0)),
+                key_match: Some(NumberMatcher::Val(20)),
+                value_match: Some(NumberMatcher::Val(40))
+            }
+        );
+
+        // Without any optional matchers
+        let mut hash = RCHash::new();
+        hash.insert(k("message_type"), k("poly_aftertouch"));
+
+        let matcher = build_midi_event_matcher(Some(&hash)).ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            MidiEventMatcher::PolyAftertouch {
+                channel_match: None,
+                key_match: None,
+                value_match: None
+            }
+        );
+    }
+
+    #[test]
+    fn build_control_change_matcher() {
+        let mut hash = RCHash::new();
+        hash.insert(k("message_type"), k("control_change"));
+        hash.insert(k("channel"), RawConfig::Integer(0));
+        hash.insert(k("control"), RawConfig::Integer(20));
+        hash.insert(k("value"), RawConfig::Integer(40));
+
+        let matcher = build_midi_event_matcher(Some(&hash)).ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            MidiEventMatcher::ControlChange {
+                channel_match: Some(NumberMatcher::Val(0)),
+                control_match: Some(NumberMatcher::Val(20)),
+                value_match: Some(NumberMatcher::Val(40))
+            }
+        );
+
+        // Without any optional matchers
+        let mut hash = RCHash::new();
+        hash.insert(k("message_type"), k("control_change"));
+
+        let matcher = build_midi_event_matcher(Some(&hash)).ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            MidiEventMatcher::ControlChange {
+                channel_match: None,
+                control_match: None,
+                value_match: None
+            }
+        );
+    }
+
+    #[test]
+    fn build_program_change_matcher() {
+        let mut hash = RCHash::new();
+        hash.insert(k("message_type"), k("program_change"));
+        hash.insert(k("channel"), RawConfig::Integer(0));
+        hash.insert(k("program"), RawConfig::Integer(20));
+
+        let matcher = build_midi_event_matcher(Some(&hash)).ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            MidiEventMatcher::ProgramChange {
+                channel_match: Some(NumberMatcher::Val(0)),
+                program_match: Some(NumberMatcher::Val(20)),
+            }
+        );
+
+        // Without any optional matchers
+        let mut hash = RCHash::new();
+        hash.insert(k("message_type"), k("program_change"));
+
+        let matcher = build_midi_event_matcher(Some(&hash)).ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            MidiEventMatcher::ProgramChange {
+                channel_match: None,
+                program_match: None,
+            }
+        );
+    }
+
+    #[test]
+    fn build_channel_aftertouch_matcher() {
+        let mut hash = RCHash::new();
+        hash.insert(k("message_type"), k("channel_aftertouch"));
+        hash.insert(k("channel"), RawConfig::Integer(0));
+        hash.insert(k("value"), RawConfig::Integer(20));
+
+        let matcher = build_midi_event_matcher(Some(&hash)).ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            MidiEventMatcher::ChannelAftertouch {
+                channel_match: Some(NumberMatcher::Val(0)),
+                value_match: Some(NumberMatcher::Val(20)),
+            }
+        );
+
+        // Without any optional matchers
+        let mut hash = RCHash::new();
+        hash.insert(k("message_type"), k("channel_aftertouch"));
+
+        let matcher = build_midi_event_matcher(Some(&hash)).ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            MidiEventMatcher::ChannelAftertouch {
+                channel_match: None,
+                value_match: None,
+            }
+        );
+    }
+
+    #[test]
+    fn build_pitch_bend_change_matcher() {
+        let mut hash = RCHash::new();
+        hash.insert(k("message_type"), k("pitch_bend_change"));
+        hash.insert(k("channel"), RawConfig::Integer(0));
+        hash.insert(k("value"), RawConfig::Integer(20));
+
+        let matcher = build_midi_event_matcher(Some(&hash)).ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            MidiEventMatcher::PitchBendChange {
+                channel_match: Some(NumberMatcher::Val(0)),
+                value_match: Some(NumberMatcher::Val(20)),
+            }
+        );
+
+        // Without any optional matchers
+        let mut hash = RCHash::new();
+        hash.insert(k("message_type"), k("pitch_bend_change"));
+
+        let matcher = build_midi_event_matcher(Some(&hash)).ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            MidiEventMatcher::PitchBendChange {
+                channel_match: None,
+                value_match: None,
+            }
+        );
+    }
 }
