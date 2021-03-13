@@ -8,7 +8,7 @@ pub mod actions;
 pub mod event_matching;
 pub mod preconditions;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Scope {
     pub window_class: Option<StringMatcher>,
     pub window_name: Option<StringMatcher>,

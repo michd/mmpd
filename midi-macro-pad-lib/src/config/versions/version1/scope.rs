@@ -51,3 +51,88 @@ pub (crate) fn build_scope(raw_scope: &RCHash) -> Result<Option<Scope>, ConfigEr
         None
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::config::raw_config::{RCHash, k, RawConfig};
+    use crate::config::versions::version1::scope::build_scope;
+    use crate::macros::Scope;
+    use crate::match_checker::StringMatcher;
+
+    #[test]
+    fn builds_scope_out_of_matchers_hash() {
+        let mut window_class_hash = RCHash::new();
+        window_class_hash.insert(k("is"), k("class"));
+
+        let mut window_name_hash = RCHash::new();
+        window_name_hash.insert(k("is"), k("name"));
+
+        let mut input = RCHash::new();
+        input.insert(k("window_class"), RawConfig::Hash(window_class_hash));
+        input.insert(k("window_name"), RawConfig::Hash(window_name_hash));
+
+        let scope = build_scope(&input).ok().unwrap().unwrap();
+
+        assert_eq!(
+            scope,
+            Scope {
+                window_class: Some(StringMatcher::Is("class".to_string())),
+                window_name: Some(StringMatcher::Is("name".to_string()))
+            }
+        );
+    }
+
+    #[test]
+    fn builds_scope_with_one_matcher_none() {
+        let mut window_class_hash = RCHash::new();
+        window_class_hash.insert(k("is"), k("class"));
+
+        let mut input = RCHash::new();
+        input.insert(k("window_class"), RawConfig::Hash(window_class_hash));
+
+        let scope = build_scope(&input).ok().unwrap().unwrap();
+
+        assert_eq!(
+            scope,
+            Scope {
+                window_class: Some(StringMatcher::Is("class".to_string())),
+                window_name: None
+            }
+        );
+
+        let mut window_name_hash = RCHash::new();
+        window_name_hash.insert(k("is"), k("name"));
+
+        let mut input = RCHash::new();
+        input.insert(k("window_name"), RawConfig::Hash(window_name_hash));
+
+        let scope = build_scope(&input).ok().unwrap().unwrap();
+
+        assert_eq!(
+            scope,
+            Scope {
+                window_class: None,
+                window_name: Some(StringMatcher::Is("name".to_string()))
+            }
+        );
+    }
+
+    #[test]
+    fn build_scope_without_either_matcher_returns_none() {
+        let scope = build_scope(&RCHash::new()).ok().unwrap();
+        assert!(scope.is_none());
+    }
+
+    #[test]
+    fn build_scope_with_invalid_string_matcher_returns_error() {
+        let mut window_class_hash = RCHash::new();
+        window_class_hash.insert(k("regex"), k("foo(bar"));
+
+        let mut input = RCHash::new();
+        input.insert(k("window_class"), RawConfig::Hash(window_class_hash));
+
+        let scope = build_scope(&input);
+
+        assert!(scope.is_err());
+    }
+}
