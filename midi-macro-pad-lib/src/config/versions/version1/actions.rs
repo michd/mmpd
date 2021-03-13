@@ -64,3 +64,81 @@ pub fn build_action(raw_action: &RCHash) -> Result<Action, ConfigError> {
         }
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::config::raw_config::{RCHash, k};
+    use crate::config::versions::version1::actions::build_action;
+    use crate::macros::actions::Action;
+
+    #[test]
+    fn returns_an_error_if_type_field_is_missing() {
+        let mut hash = RCHash::new();
+        hash.insert(k("data"), k("Hello world"));
+
+        let action = build_action(&hash);
+        assert!(action.is_err());
+    }
+
+    #[test]
+    fn returns_an_error_if_type_field_has_unknown_value() {
+        let mut hash = RCHash::new();
+        hash.insert(k("type"), k("not-a-real-action"));
+        hash.insert(k("data"), k("Hello world"));
+
+        let action = build_action(&hash);
+        assert!(action.is_err());
+    }
+
+    #[test]
+    fn builds_an_enter_text_action() {
+        let mut hash = RCHash::new();
+        hash.insert(k("type"), k("enter_text"));
+        // For more complicated versions of making enter_text actions, see the tests for
+        // build_enter_text_action
+        hash.insert(k("data"), k("Hello world"));
+
+        let action = build_action(&hash).ok().unwrap();
+
+        assert_eq!(
+            action,
+            Action::EnterText("Hello world".to_string(), 1)
+        );
+    }
+
+    #[test]
+    fn builds_a_key_sequence_action() {
+        let mut hash = RCHash::new();
+        hash.insert(k("type"), k("key_sequence"));
+        // For more complicated versions of making key_sequence actions, see the tests for
+        // build_key_sequence_action
+        hash.insert(k("data"), k("ctrl+shift+t"));
+
+        let action = build_action(&hash).ok().unwrap();
+
+        assert_eq!(
+            action,
+            Action::KeySequence("ctrl+shift+t".to_string(), 1)
+        );
+    }
+
+    #[test]
+    fn builds_a_shell_action() {
+        let mut hash = RCHash::new();
+        hash.insert(k("type"), k("shell"));
+        // For more complicated versions of making shell actions, see the tests for
+        // build_shell_action
+        hash.insert(k("data"), k("cmd"));
+
+        let action = build_action(&hash).ok().unwrap();
+
+        assert_eq!(
+            action,
+            Action::Shell {
+                command: "cmd".to_string(),
+                args: None,
+                env_vars: None,
+            }
+        );
+    }
+}
