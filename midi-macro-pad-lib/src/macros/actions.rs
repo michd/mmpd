@@ -3,6 +3,7 @@ use crate::shell::{Shell, ShellImpl};
 
 /// Action run in response to a MIDI event
 /// Any Action value can be run through ActionRunner::run.
+#[derive(PartialEq, Debug)]
 pub enum Action {
     /// Sends a key sequence 0 or more times
     /// Use this one for key combinations.

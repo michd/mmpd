@@ -66,3 +66,65 @@ pub fn build_action_key_sequence(raw_data: Option<&RawConfig>) -> Result<Action,
         )))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::config::raw_config::{RawConfig, RCHash, k};
+    use crate::macros::actions::Action;
+    use crate::config::versions::version1::actions::key_sequence::build_action_key_sequence;
+
+    #[test]
+    fn returns_an_error_if_no_data_is_provided() {
+        let action = build_action_key_sequence(None);
+        assert!(action.is_err());
+    }
+
+    #[test]
+    fn builds_key_sequence_action_from_simplified_form() {
+        let action = build_action_key_sequence(
+            Some(&RawConfig::String("ctrl+shift+t".to_string()))
+        ).ok().unwrap();
+
+        assert_eq!(action, Action::KeySequence("ctrl+shift+t".to_string(), 1));
+    }
+
+    #[test]
+    fn builds_key_sequence_action_from_hash_with_count() {
+        let mut data_hash = RCHash::new();
+        data_hash.insert(k("sequence"), k("ctrl+shift+t"));
+        data_hash.insert(k("count"), RawConfig::Integer(3));
+
+        let action = build_action_key_sequence(Some(&RawConfig::Hash(data_hash)))
+            .ok().unwrap();
+
+        assert_eq!(action, Action::KeySequence("ctrl+shift+t".to_string(), 3));
+    }
+
+    #[test]
+    fn builds_key_sequence_action_from_hash_without_count() {
+        let mut data_hash = RCHash::new();
+        data_hash.insert(k("sequence"), k("ctrl+shift+t"));
+
+        let action = build_action_key_sequence(Some(&RawConfig::Hash(data_hash)))
+            .ok().unwrap();
+
+        assert_eq!(action, Action::KeySequence("ctrl+shift+t".to_string(), 1));
+    }
+
+    #[test]
+    fn returns_an_error_if_count_is_negative() {
+        let mut data_hash = RCHash::new();
+        data_hash.insert(k("text"), k("Hello world"));
+        data_hash.insert(k("count"), RawConfig::Integer(-5));
+
+        let action = build_action_key_sequence(Some(&RawConfig::Hash(data_hash)));
+
+        assert!(action.is_err());
+    }
+
+    #[test]
+    fn returns_an_error_if_data_is_neither_hash_or_string() {
+        let action = build_action_key_sequence(Some(&RawConfig::Null));
+        assert!(action.is_err());
+    }
+}

@@ -68,3 +68,64 @@ pub fn build_action_enter_text(raw_data: Option<&RawConfig>) -> Result<Action, C
         ))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::config::versions::version1::actions::enter_text::build_action_enter_text;
+    use crate::config::raw_config::{RawConfig, RCHash, k};
+    use crate::macros::actions::Action;
+
+    #[test]
+    fn returns_an_error_if_no_data_is_provided() {
+        let action = build_action_enter_text(None);
+        assert!(action.is_err());
+    }
+
+    #[test]
+    fn builds_enter_text_action_from_simplified_form() {
+        let action = build_action_enter_text(Some(&RawConfig::String("Hello world".to_string())))
+            .ok().unwrap();
+
+        assert_eq!(action, Action::EnterText("Hello world".to_string(), 1));
+    }
+
+    #[test]
+    fn builds_enter_text_action_from_hash_with_count() {
+        let mut data_hash = RCHash::new();
+        data_hash.insert(k("text"), k("Hello world"));
+        data_hash.insert(k("count"), RawConfig::Integer(3));
+
+        let action = build_action_enter_text(Some(&RawConfig::Hash(data_hash)))
+            .ok().unwrap();
+
+        assert_eq!(action, Action::EnterText("Hello world".to_string(), 3));
+    }
+
+    #[test]
+    fn builds_enter_text_action_from_hash_without_count() {
+        let mut data_hash = RCHash::new();
+        data_hash.insert(k("text"), k("Hello world"));
+
+        let action = build_action_enter_text(Some(&RawConfig::Hash(data_hash)))
+            .ok().unwrap();
+
+        assert_eq!(action, Action::EnterText("Hello world".to_string(), 1));
+    }
+
+    #[test]
+    fn returns_an_error_if_count_is_negative() {
+        let mut data_hash = RCHash::new();
+        data_hash.insert(k("text"), k("Hello world"));
+        data_hash.insert(k("count"), RawConfig::Integer(-5));
+
+        let action = build_action_enter_text(Some(&RawConfig::Hash(data_hash)));
+
+        assert!(action.is_err());
+    }
+
+    #[test]
+    fn returns_an_error_if_data_is_neither_hash_or_string() {
+        let action = build_action_enter_text(Some(&RawConfig::Null));
+        assert!(action.is_err());
+    }
+}
