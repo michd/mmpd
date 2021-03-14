@@ -65,6 +65,7 @@ pub fn task_main(cli_matches: Option<&ArgMatches>) {
         println!("https://github.com/michd/mmpd/blob/main/docs/config.md");
 
         println!("\nSince there are no macros configured, there is nothing to do; exiting.");
+        return;
     }
 
     for event in rx {
