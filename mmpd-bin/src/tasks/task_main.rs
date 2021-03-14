@@ -8,7 +8,13 @@ use crate::init::midi_setup::get_midi_setup;
 pub fn task_main(cli_matches: Option<&ArgMatches>) {
     let config = get_config(cli_matches);
 
-    let midi_setup= get_midi_setup(cli_matches, config.as_ref());
+    if config.is_none() {
+        return;
+    }
+
+    let (config, config_filename) = config.unwrap();
+
+    let midi_setup= get_midi_setup(cli_matches, Some(&config));
 
     if midi_setup.is_none() {
         return;
@@ -35,23 +41,31 @@ pub fn task_main(cli_matches: Option<&ArgMatches>) {
     let action_runner = action_runner.unwrap();
     let state = state::new(focus_adapter);
 
-    if config.is_none() {
-        return;
-    }
-
-    let config = config.unwrap();
-
     let (tx, rx) = get_event_bus();
-    let handle = midi_adapter.start_listening(midi_device_name, tx);
+    let handle = midi_adapter.start_listening(&midi_device_name, tx);
 
     if handle.is_none() {
         eprintln!("Error: unable to start listening for MIDI events.");
     }
 
-    println!("Starting mmpd. Have {} configured macros.\n", config.macros.len());
+    println!("Starting mmpd.");
+    println!("Using config file: {}", config_filename);
+    println!("Listening for MIDI events on '{}'", midi_device_name);
+    let macro_count = config.macros.len();
+
+    if macro_count == 1 {
+        println!("There is 1 configured macro.");
+    } else {
+        println!("There are {} configured macros.\n", macro_count);
+    }
+
+    if config.macros.is_empty() {
+        println!("\nYou can set up some macros by editing the config file.");
+        println!("Find documentation on the config file format here:");
+        println!("https://github.com/michd/mmpd/blob/main/docs/config.md");
+    }
 
     for event in rx {
-
         for macro_item in config.macros.iter() {
             if let Some(actions) = macro_item.evaluate(&event, &state) {
                 if let Some(macro_name) = macro_item.name() {

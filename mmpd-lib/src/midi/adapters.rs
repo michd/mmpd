@@ -36,7 +36,7 @@ pub trait MidiAdapter {
     /// handle.
     fn start_listening(
         &mut self,
-        port_pattern: String,
+        port_pattern: &str,
         tx: SyncSender<Event>
     ) -> Option<thread::JoinHandle<()>>;
 

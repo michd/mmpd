@@ -81,7 +81,7 @@ fn get_config_file(cli_matches: Option<&ArgMatches>) -> Option<PathBuf> {
 }
 
 // Gets a config instance
-pub (crate) fn get_config(cli_matches: Option<&ArgMatches>) -> Option<Config> {
+pub (crate) fn get_config(cli_matches: Option<&ArgMatches>) -> Option<(Config, String)> {
     // Get configuration file
     let config_file = get_config_file(cli_matches)?;
     let config_file_name = config_file.to_str().unwrap_or("[none]");
@@ -112,7 +112,7 @@ pub (crate) fn get_config(cli_matches: Option<&ArgMatches>) -> Option<Config> {
 
     // Process into Config object
     match intermediate_config.process() {
-        Ok(config) => Some(config),
+        Ok(config) => Some((config, config_file_name.to_string())),
 
         Err(e) => {
             eprintln!("Error: unable to parse config file {}", config_file_name);

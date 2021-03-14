@@ -79,7 +79,7 @@ impl MidiAdapter for Midir {
     /// handle. Further returns None if we're already listening.
     fn start_listening(
         &mut self,
-        port_pattern: String,
+        port_pattern: &str,
         tx: SyncSender<Event>,
     ) -> Option<thread::JoinHandle<()>> {
         let active = Arc::clone(&self.active);

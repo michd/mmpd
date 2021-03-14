@@ -25,6 +25,20 @@ pub (crate) fn get_midi_setup(
 
     if midi_device_name.is_none() {
         eprintln!("Error: No matching MIDI device found.");
+        eprintln!("\nAvailable devices:\n");
+
+        let ports = midi_adapter.list_ports();
+
+        if ports.is_empty() {
+            eprintln!("(none)");
+        } else {
+            for d in midi_adapter.list_ports() {
+                eprintln!("  {}", d);
+            }
+
+            eprintln!();
+        }
+
         return None;
     }
 
