@@ -1,7 +1,6 @@
-
 [workspace]
 
 members = [
-    "midi-macro-pad-lib",
-    "midi-macro-pad-bin"
+    "mmpd-lib",
+    "mmpd-bin"
 ]

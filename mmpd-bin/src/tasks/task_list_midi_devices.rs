@@ -1,5 +1,5 @@
 use clap::ArgMatches;
-use midi_macro_pad_lib::midi;
+use mmpd_lib::midi;
 
 pub (crate) fn task_list_midi_devices(_cli_matches: Option<&ArgMatches>) {
     let midi_adapter = midi::get_adapter();

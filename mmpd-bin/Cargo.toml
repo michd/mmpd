@@ -7,6 +7,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-midi-macro-pad-lib = { path = "../midi-macro-pad-lib" }
+mmpd-lib = { path = "../mmpd-lib" }
 clap = {version = "~2.33.3", features = ["yaml"]}
 directories = "3.0.1"

@@ -1,9 +1,9 @@
 use clap::ArgMatches;
-use crate::init::midi_setup::get_midi_setup;
-use midi_macro_pad_lib::{focus, state};
-use midi_macro_pad_lib::macros::actions::ActionRunner;
+use mmpd_lib::{focus, state};
+use mmpd_lib::macros::actions::ActionRunner;
+use mmpd_lib::macros::event_matching::get_event_bus;
 use crate::init::get_config;
-use midi_macro_pad_lib::macros::event_matching::get_event_bus;
+use crate::init::midi_setup::get_midi_setup;
 
 pub fn task_main(cli_matches: Option<&ArgMatches>) {
     let config = get_config(cli_matches);

@@ -1,8 +1,8 @@
 use clap::ArgMatches;
-use midi_macro_pad_lib::match_checker::{StringMatcher, MatchChecker};
-use midi_macro_pad_lib::midi::adapters::MidiAdapter;
-use midi_macro_pad_lib::midi;
-use midi_macro_pad_lib::config::Config;
+use mmpd_lib::match_checker::{StringMatcher, MatchChecker};
+use mmpd_lib::midi::adapters::MidiAdapter;
+use mmpd_lib::midi;
+use mmpd_lib::config::Config;
 
 pub (crate) fn get_midi_setup(
     cli_matches: Option<&ArgMatches>,

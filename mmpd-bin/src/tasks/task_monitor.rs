@@ -1,7 +1,7 @@
 use clap::ArgMatches;
 use crate::init::midi_setup::get_midi_setup;
-use midi_macro_pad_lib::macros::event_matching::{get_event_bus, Event};
-use midi_macro_pad_lib::midi::MidiMessage;
+use mmpd_lib::macros::event_matching::{get_event_bus, Event};
+use mmpd_lib::midi::MidiMessage;
 use crate::init::get_config;
 
 pub fn task_monitor(cli_matches: Option<&ArgMatches>) {

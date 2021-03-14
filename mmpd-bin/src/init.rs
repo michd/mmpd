@@ -7,8 +7,8 @@ use directories::ProjectDirs;
 use std::path::{PathBuf, Path};
 use std::fs;
 
-use midi_macro_pad_lib::config::Config;
-use midi_macro_pad_lib::config::input_formats::get_parser_for_extension;
+use mmpd_lib::config::Config;
+use mmpd_lib::config::input_formats::get_parser_for_extension;
 
 fn get_project_dir() -> Option<ProjectDirs> {
     ProjectDirs::from("me","michd", "mmpd")
