@@ -1,7 +1,7 @@
 use std::sync::mpsc::SyncSender;
-use crate::midi::MidiMessage;
 use std::thread;
 use crate::midi::adapters::midir::Midir;
+use crate::macros::event_matching::Event;
 
 mod midir;
 
@@ -37,7 +37,7 @@ pub trait MidiAdapter {
     fn start_listening(
         &mut self,
         port_pattern: String,
-        tx: SyncSender<MidiMessage>
+        tx: SyncSender<Event>
     ) -> Option<thread::JoinHandle<()>>;
 
     /// Instructs the implementation to abort the thread on which it is listening for incoming

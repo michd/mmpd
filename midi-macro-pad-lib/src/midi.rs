@@ -1,13 +1,6 @@
 pub mod adapters;
 pub use adapters::get_adapter;
 
-use std::sync::mpsc::{self, SyncSender, Receiver};
-
-/// Gets a bus for sending/receiving MIDI messages from the MIDI implementation
-pub fn get_midi_bus() -> (SyncSender<MidiMessage>, Receiver<MidiMessage>) {
-    mpsc::sync_channel(1024)
-}
-
 /// MidiMessage is a parsed MIDI message, structured to be easy to work with.
 /// It is parsed from 3 raw bytes of data.
 #[derive(Debug, Eq, PartialEq)]
@@ -51,6 +44,7 @@ pub enum MidiMessage {
     /// value: current position, 0-16,384 (14 bit)
     PitchBendChange { channel: u8, value: u16 },
 
+    // TODO: maybe implement these later
     //TimingClock,
     //Start,
     //Continue,
@@ -114,6 +108,7 @@ fn parse_message(bytes: &[u8]) -> Option<MidiMessage> {
 
         0b1110 => Some(MidiMessage::PitchBendChange {
             channel,
+            // TODO: check if this is correct, getting weird data from keystep
             value: ((*bytes.get(1)? as u16 & 0x7Fu16) as u16)
                 | (((*bytes.get(2)? as u16 & 0x7Fu16) << 7) as u16),
         }),

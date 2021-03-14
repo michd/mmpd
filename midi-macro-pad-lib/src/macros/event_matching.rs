@@ -3,6 +3,8 @@ use crate::midi::MidiMessage;
 use crate::macros::preconditions::Precondition;
 use crate::state::State;
 use crate::macros::event_matching::midi::MidiEventMatcher;
+use std::sync::mpsc::{SyncSender, Receiver};
+use std::sync::mpsc;
 
 pub mod midi;
 
@@ -23,7 +25,7 @@ impl EventMatcher {
         EventMatcher { matcher, required_preconditions }
     }
 
-    pub fn matches<'a>(&self, event: &Event<'a>, state: &'a Box<dyn State>) -> bool {
+    pub fn matches<'a>(&self, event: &Event, state: &'a Box<dyn State>) -> bool {
         // If there are any preconditions to satisfy, first check those against state.
         // If any one precondition is not satisfies, no further precondition is evaluated,
         // nor is the event object matched against MatcherType.
@@ -58,8 +60,8 @@ pub enum MatcherType {
     Other
 }
 
-impl <'a> MatchChecker<Event<'a>> for MatcherType {
-    fn matches(&self, val: &Event<'a>) -> bool {
+impl <'a> MatchChecker<Event> for MatcherType {
+    fn matches(&self, val: &Event) -> bool {
         match val {
             Event::Midi(data) => self.matches_midi(data),
             Event::Other => self.matches_other(),
@@ -88,9 +90,13 @@ impl MatcherType {
 }
 
 /// Wrapping type enumerating all the kinds of events supported by EventMatcher.
-pub enum Event<'a> {
-    Midi(&'a MidiMessage),
+pub enum Event {
+    Midi(MidiMessage),
     Other
+}
+
+pub fn get_event_bus() -> (SyncSender<Event>, Receiver<Event>) {
+    mpsc::sync_channel(1024)
 }
 
 #[cfg(test)]
@@ -117,7 +123,7 @@ mod tests {
             None
         );
 
-        let event = Event::Midi(&MidiMessage::NoteOn {
+        let event = Event::Midi(MidiMessage::NoteOn {
             channel: 1,
             key: 20,
             velocity: 100
@@ -144,7 +150,7 @@ mod tests {
             None
         );
 
-        let event = Event::Midi(&MidiMessage::ChannelAftertouch {
+        let event = Event::Midi(MidiMessage::ChannelAftertouch {
             channel: 1,
             value: 30
         });
@@ -162,7 +168,7 @@ mod tests {
             None
         );
 
-        let event = Event::Midi(&MidiMessage::NoteOn {
+        let event = Event::Midi(MidiMessage::NoteOn {
             channel: 4,
             key: 43,
             velocity: 100

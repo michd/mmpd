@@ -138,7 +138,7 @@ impl Macro {
     /// Evaluates an incoming event, and it it matches against this macro's matching events,
     /// returns a list of actions to execute.
     pub fn evaluate<'b>(
-        &self, event: &'b Event<'b>,
+        &self, event: &'b Event,
         state: &'b Box<dyn State>
     ) -> Option<&Vec<Action>> {
 
@@ -160,7 +160,7 @@ impl Macro {
         }
     }
 
-    fn matches_event<'b>(&self, event: &Event<'b>, state: &'b Box<dyn State>) -> bool {
+    fn matches_event<'b>(&self, event: &Event, state: &'b Box<dyn State>) -> bool {
         self.match_events.iter().any(|event_matcher| {
             event_matcher.matches(event, state)
         })

@@ -1,5 +1,8 @@
 version: 1
 
+midi_device:
+  contains: "KeyStep"
+
 scopes:
   - window_name:
       ends_with: "Inkscape"

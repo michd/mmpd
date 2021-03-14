@@ -1,4 +1,3 @@
-use crate::midi::MidiMessage;
 use midir::{MidiInput, MidiInputPort};
 use std::sync::mpsc::SyncSender;
 use std::sync::{Arc, Mutex};
@@ -6,6 +5,7 @@ use std::thread;
 use std::time::Duration;
 use crate::midi::adapters::MidiAdapter;
 use crate::midi::parse_message;
+use crate::macros::event_matching::Event;
 
 /// Handle for interfacing with the implementation from outside
 pub struct Midir {
@@ -80,7 +80,7 @@ impl MidiAdapter for Midir {
     fn start_listening(
         &mut self,
         port_pattern: String,
-        tx: SyncSender<MidiMessage>,
+        tx: SyncSender<Event>,
     ) -> Option<thread::JoinHandle<()>> {
         let active = Arc::clone(&self.active);
         let mut is_active = active.lock().unwrap();
@@ -91,7 +91,7 @@ impl MidiAdapter for Midir {
 
         let active = Arc::clone(&self.active);
 
-        let tx: SyncSender<MidiMessage> = tx.clone();
+        let tx = tx.clone();
         let port = self.get_port(&port_pattern)?;
 
         let midi_in = MidiInput::new(CLIENT_NAME).ok()?;
@@ -110,7 +110,7 @@ impl MidiAdapter for Midir {
                 port_name.as_str(),
                 move |_, bytes, _| {
                     if let Some(msg) = parse_message(bytes) {
-                        let _ = tx.send(msg);
+                        let _ = tx.send(Event::Midi(msg));
                     }
                 },
                 (),

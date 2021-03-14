@@ -1,0 +1,35 @@
+name: mmpd
+version: "0.1.0"
+author: "Mich D <mich+mmpd@michd.me>"
+about: Turns a MIDI controller into a flexible macro pad.
+args:
+  - config:
+      short: c
+      long: config
+      value_name: FILE
+      help: Specifies a custom config file to use
+      takes_value: true
+  - midi-device:
+      short: m
+      long: midi-device
+      value_name: DEVICE
+      help: "Specifies a MIDI input device (description should contain this)"
+      takes_value: true
+subcommands:
+  - monitor:
+      about: Outputs incoming events with their associated data, without running any macros
+      args:
+        - config:
+            short: c
+            long: config
+            value_name: FILE
+            help: Specifies a custom config file to use
+            takes_value: true
+        - midi-device:
+            short: m
+            long: midi-device
+            value_name: DEVICE
+            help: "Specifies a MIDI input device (description should contain this)"
+            takes_value: true
+  - list-midi-devices:
+      about: Outputs a list of available MIDI inputs
