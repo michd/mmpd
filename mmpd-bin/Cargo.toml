@@ -1,5 +1,5 @@
 [package]
-name = "midi-macro-pad-bin"
+name = "mmpd-bin"
 version = "0.1.0"
 authors = ["Michael Duerinckx <mich@michd.me>"]
 edition = "2018"

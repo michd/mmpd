@@ -324,15 +324,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ee1c47aaa256ecabcaea351eae4a9b01ef39ed810004e298d2511ed284b1525"
 
 [[package]]
-name = "midi-macro-pad-bin"
-version = "0.1.0"
-dependencies = [
- "clap",
- "directories",
- "mmpd-lib",
-]
-
-[[package]]
 name = "midir"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -348,6 +339,15 @@ dependencies = [
  "wasm-bindgen",
  "web-sys",
  "winapi",
+]
+
+[[package]]
+name = "mmpd-bin"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "directories",
+ "mmpd-lib",
 ]
 
 [[package]]
