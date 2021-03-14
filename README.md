@@ -33,11 +33,10 @@ including some future plans.
 
 ## To do:
 
-- Extensively cover configuration parsing in unit tests
 - Build out command line interface (defaulting to config file etc)
 - Allow specifying midi input name pattern in config file
 - Add a "monitor" verb to monitor incoming MIDI messages for debugging
-- Fix up focused window checking so it doesn't need to use `Command`, use
+- Fix up focused window checking, so it doesn't need to use `Command`, use
   a library instead.
 - Implement the state keeping component (MIDI etc) and precondition data structures
 - Add some action enum types that allow control of the program (like exiting it, reloading config)
