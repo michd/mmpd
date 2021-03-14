@@ -1,0 +1,70 @@
+# Version of the configuration file format, so mmpd knows how to parse it
+version: 1
+
+# Specify which MIDI device to listen to for events
+# You can see available midi devices by running `mmpd list-midi-devices`.
+midi_device:
+  # You can use a few different formats for matching the device name
+  # Possible matching strategies are: `is`, `contains`, `starts_with`, `ends_with`,
+  # and `regex`.
+  # They are all case-sensitive.
+  contains: "Arturia KeyStep"
+
+# Scopes let you define macros based on the application in the foreground.
+scopes:
+      # You can match the window_name (title of the window) and the window_class
+      # The matching strategies are the same as the ones for midi_device
+      # Both of these can be omitted, but that wouldn't be useful; put macros
+      # that don't care about foreground application in `global_macros`.
+#   - window_name:
+#       ends_with: "Inkscape"
+#     window_class:
+#       contains: "inkscape"
+
+      # List macros that should only apply to this window here
+#     macros:
+          # Macro names are optional, but are helpful for testing as mmpd will
+          # print the name of the macro as it's executed.
+#       - name: "Inkscape align objects horizontally"
+
+          # Macros must have a list of matching events. These are events in
+          # response to which the macro's actions are executed. If any one of
+          # these events matches, all actions are executed in order of appearance.
+#         matching_events:
+              # Type of the event is required. `midi` is the only event type supported
+              # right now.
+#           - type: midi
+              # See `https://github.com/michd/mmpd/blob/main/docs/config.md#midi-events` for more
+              # details about MIDI event matching
+#             data:
+#                message_type: note_on
+#                channel: 0
+#                key: 48
+          # Macros must have a list of actions to run.
+          # available actions are `key_sequence`, `enter_text`, and `shell`.
+          # See `https://github.com/michd/mmpd/blob/main/docs/config.md#actions` for
+          # more details
+#        actions:
+#           - type: key_sequence
+#             data: "ctrl+shift+a"
+#           - type: key_sequence
+#             data:
+#               sequence: "Tab"
+#               count: 6
+#           - type: key_sequence
+#             data: "Return"
+
+# Add any macros that should work regardless of foreground application
+global_macros:
+#   - name: "Type hello world"
+#     matching_events:
+#       - type: midi
+#         data:
+#           message_type: note_on
+#           channel: 0
+#           key: 60
+#           velocity:
+#             min: 63
+#     actions:
+#       - type: enter_text
+#         data: "Hello world"

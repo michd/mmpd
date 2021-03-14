@@ -9,9 +9,43 @@ use std::fs;
 
 use mmpd_lib::config::Config;
 use mmpd_lib::config::input_formats::get_parser_for_extension;
+use std::io::Write;
 
 fn get_project_dir() -> Option<ProjectDirs> {
     ProjectDirs::from("me","michd", "mmpd")
+}
+
+fn create_config_file_from_template(config_file_path: &PathBuf) -> Option<PathBuf> {
+
+    let new_config_file = fs::File::create(config_file_path);
+
+    match new_config_file {
+        Ok(mut conf_file) => {
+            match conf_file.write_all(include_bytes!["template-config.yml"]) {
+                Ok(_) => Some(config_file_path.to_path_buf()),
+
+                Err(e) => {
+                    eprintln!(
+                        "Error: unable to create config file '{}'",
+                        config_file_path.to_str().unwrap_or("[none]")
+                    );
+
+                    eprintln!("{}", e);
+                    None
+                }
+            }
+        }
+
+        Err(e) => {
+            eprintln!(
+                "Error: unable to create config file '{}'",
+                config_file_path.to_str().unwrap_or("[none]")
+            );
+
+            eprintln!("{}", e);
+            None
+        }
+    }
 }
 
 fn get_default_config_file() -> Option<PathBuf> {
@@ -28,7 +62,7 @@ fn get_default_config_file() -> Option<PathBuf> {
         })?;
 
     if !config_dir.exists() {
-        return None;
+        let _ = fs::create_dir_all(&config_dir);
     }
 
     let default_paths: Vec<PathBuf> =
@@ -43,14 +77,7 @@ fn get_default_config_file() -> Option<PathBuf> {
 
     default_paths.iter().find(|p| p.exists()).map_or_else(
         || {
-            eprintln!("Error: No config file found in:");
-
-            for path in &default_paths {
-                eprintln!("\t{}", path.to_str().unwrap_or(""));
-            }
-
-            eprintln!("\nEither create one, or specify a config file with --config=<file>");
-            None
+            create_config_file_from_template(default_paths.first().unwrap())
         },
         |p| Some(p.to_path_buf())
     )

@@ -56,13 +56,15 @@ pub fn task_main(cli_matches: Option<&ArgMatches>) {
     if macro_count == 1 {
         println!("There is 1 configured macro.");
     } else {
-        println!("There are {} configured macros.\n", macro_count);
+        println!("There are {} configured macros.", macro_count);
     }
 
     if config.macros.is_empty() {
         println!("\nYou can set up some macros by editing the config file.");
         println!("Find documentation on the config file format here:");
         println!("https://github.com/michd/mmpd/blob/main/docs/config.md");
+
+        println!("\nSince there are no macros configured, there is nothing to do; exiting.");
     }
 
     for event in rx {
