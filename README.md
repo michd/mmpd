@@ -7,7 +7,7 @@ currently focused.
 Initially written for use on Linux distributions using the X windowing system, it is structured with
 the intent to allow implementing it for other platforms.
 
-## Current status: not ready for use
+## Current status: tentatively ready for some use
 
 What's implemented so far:
 
@@ -22,20 +22,17 @@ What's implemented so far:
   - Macros (combining scopes, event matchers, and actions into one package)
 - Configuration: YAML parser to intermediary "RawConfig" format, plus a parser
   from RawConfig into the aforementioned data structures
-  
-- Limited unit test coverage for the data structures
-
-The program's "listen" command currently loads the "testcfg.yml" config file,
-loads it into the data structures and uses it, which works.
+- Command line interfaces covering
+  - Picking a config file or loading one from default location
+  - list-midi-devices subcommand
+  - monitor subcommand (to view incoming events without running macros)
+  - (no subcommand) listening for events and running configured macros in response
 
 There's documentation on the configuration format in [docs/config.md](https://github.com/michd/midi-macro-pad/blob/main/docs/config.md)
 including some future plans.
 
 ## To do:
 
-- Build out command line interface (defaulting to config file etc)
-- Allow specifying midi input name pattern in config file
-- Add a "monitor" verb to monitor incoming MIDI messages for debugging
 - Fix up focused window checking, so it doesn't need to use `Command`, use
   a library instead.
 - Implement the state keeping component (MIDI etc) and precondition data structures
