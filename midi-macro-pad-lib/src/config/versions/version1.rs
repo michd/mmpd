@@ -10,6 +10,7 @@ use crate::config::raw_config::{RCHash, AccessHelpers, RawConfig};
 use crate::config::{ConfigError, Config};
 use crate::config::versions::version1::scope::build_scope;
 use crate::config::versions::version1::macros::build_scope_macros;
+use crate::config::versions::version1::primitive_matchers::build_string_matcher;
 
 pub (crate) struct Version1Processor {
     // Ideas:
@@ -48,13 +49,21 @@ impl ConfigVersionProcessor for Version1Processor {
     /// ## Arguments
     /// raw_config: Top level hash parsed from the config input file
     fn process(&self, raw_config: RCHash) -> Result<Config, ConfigError> {
+        const MIDI_DEVICE_FIELD: &str = "midi_device";
         const SCOPES_FIELD: &str = "scopes";
         const MACROS_FIELD: &str = "macros";
         const GLOBAL_MACROS_FIELD: &str = "global_macros";
 
         let mut config = Config {
+            midi_device_matcher: None,
             macros: vec![]
         };
+
+        if let Some(raw_midi_device_matcher) = raw_config.get_hash(MIDI_DEVICE_FIELD) {
+            let midi_matcher = build_string_matcher(Some(raw_midi_device_matcher))?;
+
+            config.midi_device_matcher = midi_matcher;
+        }
 
         if let Some(raw_scopes) = raw_config.get_array(SCOPES_FIELD) {
             for raw_scope in raw_scopes {

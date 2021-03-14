@@ -2,6 +2,7 @@
 //! other types) into a fully formed Config object, ready to be used by the main application.
 
 use crate::macros::Macro;
+use crate::match_checker::StringMatcher;
 
 pub mod raw_config;
 pub mod input_formats;
@@ -10,6 +11,9 @@ pub mod versions;
 /// Configuration owner used by the main program. An instance of this holds all data that gets
 /// parsed from a configuration file into relevant data structures like `Macro`.
 pub struct Config {
+    // String matcher for which midi device to use
+    pub midi_device_matcher: Option<StringMatcher>,
+
     /// List of macros specified in config file
     pub macros: Vec<Macro>
 }
