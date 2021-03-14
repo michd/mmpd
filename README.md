@@ -1,11 +1,14 @@
-# MIDI Macro Pad
+# mmpd
 
-MIDI Macro Pad turns the MIDI Keyboard or controller you have hooked up to your computer into a versatile
-Macro pad. The aim is to assign behavior to keys and controls, differentiating based on the application that is
-currently focused.
+mmpd turns a MIDI keyboard or controller hooked up to your computer into a versatile macro pad. The aim is to assign
+behavior to keys and controllers, while differentiating based on the application that is currently focused.
+
+Essentially, think of it as an additional keyboard that does custom things based on what application you're working with.
+
+You can of course also set up actions that work regardless of the application.
 
 Initially written for use on Linux distributions using the X windowing system, it is structured with
-the intent to allow implementing it for other platforms.
+the intent to allow implementing it for other platforms, though this has not been done yet.
 
 ## Current status: tentatively ready for some use
 
@@ -43,6 +46,6 @@ including some future plans.
 
 - [xdotool](https://www.semicomplete.com/projects/xdotool/) (get it through your system's package manager)
   
-  xdotool is used both through its library (libxdo) as well as directly via the shell. This may be
+  xdotool is used both through its library (libxdo) and directly via the shell. This may be
   improved on later by using X libraries directly.
 

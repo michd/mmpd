@@ -1,6 +1,6 @@
 # Configuration
 
-MIDI-Macro-Pad is configured with a single YAML file specifying events and conditions that need to happen in order to
+mmpd is configured with a single YAML file specifying events and conditions that need to happen in order to
 run specified actions.
 
 At the top level, the file has two properties, and looks like this:
