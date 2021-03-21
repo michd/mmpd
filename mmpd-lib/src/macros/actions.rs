@@ -11,12 +11,20 @@ pub enum Action {
     /// Per example "ctrl+shift+t": emulates pressing the "Ctrl", "Shift" and "t" keys at
     /// the same time.
     /// The number is how many times this key sequence should be entered.
-    KeySequence(String, usize),
+    KeySequence {
+        sequence: String,
+        count: usize,
+        delay: Option<u32>
+    },
 
     /// Enters text as if you typed it on a keyboard
     /// Use this one for text exactly as in the string provided.
     /// The number is how many times this same string should be entered.
-    EnterText(String, usize),
+    EnterText {
+        text: String,
+        count: usize,
+        delay: Option<u32>
+    },
 
     /// Runs a program using the shell, allows running arbitrary programs.
     Shell {
@@ -40,7 +48,28 @@ pub enum Action {
     // This can be expanded upon
 }
 
-const DELAY_BETWEEN_KEYS_US: u32 = 100;
+impl Action {
+    /// Shorthand for creating the common simple form of a
+    pub fn key_sequence(sequence: &str) -> Action {
+        Action::KeySequence {
+            sequence: sequence.to_string(),
+            count: 1,
+            delay: None
+        }
+    }
+
+    /// Shorthand for creating the common simple form of Action::EnterText
+    pub fn enter_text(text: &str) -> Action {
+        Action::EnterText {
+            text: text.to_string(),
+            count: 1,
+            delay: None
+        }
+    }
+}
+
+// TODO: this should a parameter for KeySequence and EnterText
+const DELAY_BETWEEN_KEYS_US: u32 = 150000;
 
 /// Struct to give access to running Actions
 pub struct ActionRunner {
@@ -72,13 +101,13 @@ impl ActionRunner {
     /// Executes a given action based on action type
     pub fn run(&self, action: &Action) {
         match action {
-            Action::KeySequence(sequence, count) => {
-                self.run_key_sequence(sequence, *count);
-            },
+            Action::KeySequence { sequence, count, delay} => {
+                self.run_key_sequence(sequence, *count, *delay);
+            }
 
-            Action::EnterText(text, count) => {
-                self.run_enter_text(text, *count);
-            },
+            Action::EnterText { text, count, delay } => {
+                self.run_enter_text(text, *count, *delay)
+            }
 
             Action::Shell { command, args, env_vars } => {
                 self.run_shell(command, args.clone(), env_vars.clone());
@@ -86,15 +115,21 @@ impl ActionRunner {
         }
     }
 
-    fn run_key_sequence(&self, sequence: &str, count: usize) {
+    fn run_key_sequence(&self, sequence: &str, count: usize, delay: Option<u32>) {
         for _ in 0..count {
-            self.kb_adapter.send_keysequence(sequence, DELAY_BETWEEN_KEYS_US);
+            self.kb_adapter.send_keysequence(
+                sequence,
+                delay.unwrap_or(DELAY_BETWEEN_KEYS_US)
+            );
         }
     }
 
-    fn run_enter_text(&self, text: &str, count: usize) {
+    fn run_enter_text(&self, text: &str, count: usize, delay: Option<u32>) {
         for _ in 0..count {
-            self.kb_adapter.send_text(text, DELAY_BETWEEN_KEYS_US);
+            self.kb_adapter.send_text(
+                text,
+                delay.unwrap_or(DELAY_BETWEEN_KEYS_US)
+            );
         }
     }
 
@@ -169,7 +204,7 @@ mod tests {
             .set_keyboard_adapter(Box::new(mock_keyb_adapter))
             .into_runner();
 
-        runner.run(&Action::KeySequence("ctrl+alt+delete".to_string(), 1));
+        runner.run(&Action::key_sequence("ctrl+alt+delete"));
     }
 
     #[test]
@@ -185,7 +220,11 @@ mod tests {
             .set_keyboard_adapter(Box::new(mock_keyb_adapter))
             .into_runner();
 
-        runner.run(&Action::KeySequence("Tab".to_string(), 3));
+        runner.run(&Action::KeySequence {
+            sequence: "Tab".to_string(),
+            count: 3,
+            delay: None
+        });
     }
 
     #[test]
@@ -201,7 +240,7 @@ mod tests {
             .set_keyboard_adapter(Box::new(mock_keyb_adapter))
             .into_runner();
 
-        runner.run(&Action::EnterText("hello".to_string(), 1));
+        runner.run(&Action::enter_text("hello"));
     }
 
     #[test]
@@ -217,7 +256,11 @@ mod tests {
             .set_keyboard_adapter(Box::new(mock_keyb_adapter))
             .into_runner();
 
-        runner.run(&Action::EnterText("hello".to_string(), 3));
+        runner.run(&Action::EnterText {
+            text: "hello".to_string(),
+            count: 3,
+            delay: None
+        });
     }
 
     #[test]

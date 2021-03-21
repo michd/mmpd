@@ -335,7 +335,7 @@ mod tests {
                 ],
                 required_preconditions: None,
                 actions: vec![
-                    Action::EnterText("Hello".to_string(), 1)
+                    Action::enter_text("Hello")
                 ],
                 scope: None
             }
@@ -399,7 +399,7 @@ mod tests {
                 ],
                 required_preconditions: None,
                 actions: vec![
-                    Action::EnterText("Hello".to_string(), 1)
+                    Action::enter_text("Hello")
                 ],
 
                 scope: Some(Scope {
@@ -488,7 +488,7 @@ mod tests {
                     required_preconditions: None,
 
                     actions: vec![
-                        Action::EnterText("Hello1".to_string(), 1)
+                        Action::enter_text("Hello1")
                     ],
 
                     scope: Some(Scope {
@@ -515,7 +515,7 @@ mod tests {
                     required_preconditions: None,
 
                     actions: vec![
-                        Action::EnterText("Hello2".to_string(), 1)
+                        Action::enter_text("Hello2")
                     ],
 
                     scope: Some(Scope {
