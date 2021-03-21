@@ -304,12 +304,16 @@ type: key_sequence,
 data: 
   sequence: "ctrl+shift+t",
   count: 2
+  delay: 1500
 ```
 
 - `sequence`: Required. A string representing the key combination. Key symbols are those from X Keysyms. A list may be
   found in the X11 source code file for [keysymdef.h](https://code.woboq.org/kde/include/X11/keysymdef.h.html).
   The symbols to use are the `XK_`-prefixed ones, without that prefix.
 - `count`: Optional, defaults to 1. How many times to repeat entering this sequence.
+- `delay`: Optional, defaults to 100. How many microseconds to wait between key presses. 
+- `delay_ms`: Optional, shorthand for `delay` for larger values. How many milliseconds to wait between key presses.
+  If both `delay` and `delay_ms` have valid values, the value for `delay` is used.
 
 #### enter_text
 
@@ -321,10 +325,14 @@ type: enter_text,
 data: 
   text: "Hello world!",
   count: 1
+  delay: 1500
 ```
 
 - `text`: Required. String containing text exactly as you'd like it "typed" into the focused application.
 - `count`: Optional, defaults to 1. How many times to repeat entering this sequence.
+- `delay`: Optional, defaults to 100. How many microseconds to wait between key presses.
+- `delay_ms`: Optional, shorthand for `delay` for larger values. How many milliseconds to wait between key presses.
+  If both `delay` and `delay_ms` have valid values, the value for `delay` is used.
 
 ##### Shortened version
 
@@ -337,6 +345,7 @@ type: enter_text,
 data:
   text: "Hello world!"
   count: 1
+  delay: 100
 ```
 
 ```yaml
