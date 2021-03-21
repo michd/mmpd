@@ -102,7 +102,7 @@ mod tests {
 
         assert_eq!(
             action,
-            Action::EnterText("Hello world".to_string(), 1)
+            Action::enter_text("Hello world")
         );
     }
 
@@ -118,7 +118,7 @@ mod tests {
 
         assert_eq!(
             action,
-            Action::KeySequence("ctrl+shift+t".to_string(), 1)
+            Action::key_sequence("ctrl+shift+t")
         );
     }
 

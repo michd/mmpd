@@ -11,12 +11,22 @@ use crate::config::ConfigError;
 ///   ```yaml
 ///   text: "text to be typed"
 ///   count: 2
+///   delay: 40 # Delay in microseconds
+///   delay_ms: 30 # Alternatively, delay in milliseconds
 ///   ```
 ///
 ///   `text` is required and should be a String, like "Hello world!"
 ///
 ///   `count` is optional and should be a positive integer; this is how many times the text
 ///   is to be repeated. It also defaults to 1 if anything that isn't an integer is given.
+///
+///   `delay` is optional and should be a positive integer; this is how long to wait between
+///   key presses, allowing the focused application time to process it. This is expressed in
+///   microseconds (millionths of a second).
+///
+///   `delay_ms` is optional and should be a positive integer. Like `delay`, it is how long
+///   to wait between key presses, except this is milliseconds (thousandths of a second).
+///   If both `delay_ms` and `delay` are specified with valid values, the value of `delay` is used.
 ///
 /// When specified as a `RawConfig::String`, or omitted in a `RawConfig::Hash`, `count` will default
 /// to 1.
@@ -32,6 +42,8 @@ use crate::config::ConfigError;
 pub fn build_action_enter_text(raw_data: Option<&RawConfig>) -> Result<Action, ConfigError> {
     const TEXT_FIELD: &str = "text";
     const COUNT_FIELD: &str = "count";
+    const DELAY_FIELD: &str = "delay";
+    const DELAY_MS_FIELD: &str = "delay_ms";
 
     let raw_data = raw_data.ok_or_else(|| {
         ConfigError::InvalidConfig(
@@ -40,7 +52,7 @@ pub fn build_action_enter_text(raw_data: Option<&RawConfig>) -> Result<Action, C
     })?;
 
     match raw_data {
-        RawConfig::String(text) => Ok(Action::EnterText(text.to_string(), 1)),
+        RawConfig::String(text) => Ok(Action::enter_text(text)),
 
         RawConfig::Hash(hash) => {
             let text = hash.get_string(TEXT_FIELD).ok_or_else(|| {
@@ -52,12 +64,34 @@ pub fn build_action_enter_text(raw_data: Option<&RawConfig>) -> Result<Action, C
 
             let count = hash.get_integer(COUNT_FIELD).unwrap_or(1);
 
+            let delay = hash.get_integer(DELAY_FIELD)
+                .map(|d| {
+                    if d < 0 {
+                        None
+                    } else {
+                        Some(d as u32)
+                    }
+                })
+                .or_else(|| {
+                   hash.get_integer(DELAY_MS_FIELD).map(|d| {
+                       if d < 0 {
+                           None
+                       } else {
+                           Some((d as u32) * 1000)
+                       }
+                   })
+                }).flatten();
+
             if count < 0 {
                 Err(ConfigError::InvalidConfig(
                     format!("Action enter_text: count should be 0 or more, found {}", count)
                 ))
             } else {
-                Ok(Action::EnterText(text.to_string(), count as usize))
+                Ok(Action::EnterText {
+                    text: text.to_string(),
+                    count: count as usize,
+                    delay
+                })
             }
         }
 
@@ -86,7 +120,7 @@ mod tests {
         let action = build_action_enter_text(Some(&RawConfig::String("Hello world".to_string())))
             .ok().unwrap();
 
-        assert_eq!(action, Action::EnterText("Hello world".to_string(), 1));
+        assert_eq!(action, Action::enter_text("Hello world"));
     }
 
     #[test]
@@ -98,7 +132,76 @@ mod tests {
         let action = build_action_enter_text(Some(&RawConfig::Hash(data_hash)))
             .ok().unwrap();
 
-        assert_eq!(action, Action::EnterText("Hello world".to_string(), 3));
+        assert_eq!(action, Action::EnterText {
+            text: "Hello world".to_string(),
+            count: 3,
+            delay: None
+        });
+    }
+
+    #[test]
+    fn builds_enter_text_action_from_hash_with_delay() {
+        let mut data_hash = RCHash::new();
+        data_hash.insert(k("text"), k("Hello world"));
+        data_hash.insert(k("delay"), RawConfig::Integer(2500));
+
+        let action = build_action_enter_text(Some(&RawConfig::Hash(data_hash)))
+            .ok().unwrap();
+
+        assert_eq!(action, Action::EnterText {
+            text: "Hello world".to_string(),
+            count: 1,
+            delay: Some(2500)
+        });
+    }
+
+    #[test]
+    fn discards_delay_if_negative() {
+        let mut data_hash = RCHash::new();
+        data_hash.insert(k("text"), k("Hello world"));
+        data_hash.insert(k("delay"), RawConfig::Integer(-200));
+
+        let action = build_action_enter_text(Some(&RawConfig::Hash(data_hash)))
+            .ok().unwrap();
+
+        assert_eq!(action, Action::EnterText {
+            text: "Hello world".to_string(),
+            count: 1,
+            delay: None
+        });
+    }
+
+    #[test]
+    fn builds_action_with_millisecond_delay() {
+        let mut data_hash = RCHash::new();
+        data_hash.insert(k("text"), k("Hello world"));
+        data_hash.insert(k("delay_ms"), RawConfig::Integer(20));
+
+        let action = build_action_enter_text(Some(&RawConfig::Hash(data_hash)))
+            .ok().unwrap();
+
+        assert_eq!(action, Action::EnterText {
+            text: "Hello world".to_string(),
+            count: 1,
+            delay: Some(20_000)
+        })
+    }
+    
+    #[test]
+    fn suffixless_delay_supersedes_millisecond_delay() {
+        let mut data_hash = RCHash::new();
+        data_hash.insert(k("text"), k("Hello world"));
+        data_hash.insert(k("delay_ms"), RawConfig::Integer(20));
+        data_hash.insert(k("delay"), RawConfig::Integer(33));
+
+        let action = build_action_enter_text(Some(&RawConfig::Hash(data_hash)))
+            .ok().unwrap();
+
+        assert_eq!(action, Action::EnterText {
+            text: "Hello world".to_string(),
+            count: 1,
+            delay: Some(33)
+        })
     }
 
     #[test]
@@ -109,7 +212,7 @@ mod tests {
         let action = build_action_enter_text(Some(&RawConfig::Hash(data_hash)))
             .ok().unwrap();
 
-        assert_eq!(action, Action::EnterText("Hello world".to_string(), 1));
+        assert_eq!(action, Action::enter_text("Hello world"));
     }
 
     #[test]
