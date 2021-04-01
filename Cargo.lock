@@ -355,10 +355,12 @@ name = "mmpd-lib"
 version = "0.1.0"
 dependencies = [
  "libxdo",
+ "libxdo-sys",
  "linked-hash-map",
  "midir",
  "mockall",
  "regex",
+ "x11",
  "yaml-rust 0.4.5",
 ]
 
