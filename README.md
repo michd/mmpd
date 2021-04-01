@@ -36,8 +36,6 @@ including some future plans.
 
 ## To do:
 
-- Fix up focused window checking, so it doesn't need to use `Command`, use
-  a library instead.
 - Implement the state keeping component (MIDI etc) and precondition data structures
 - Add some action enum types that allow control of the program (like exiting it, reloading config)
 - Investigate portability to non-linux platforms
@@ -46,6 +44,5 @@ including some future plans.
 
 - [xdotool](https://www.semicomplete.com/projects/xdotool/) (get it through your system's package manager)
   
-  xdotool is used both through its library (libxdo) and directly via the shell. This may be
-  improved on later by using X libraries directly.
+  xdotool is needed for its library (libxdo).
 
