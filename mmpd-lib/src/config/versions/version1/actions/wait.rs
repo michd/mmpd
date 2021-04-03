@@ -2,7 +2,7 @@ use crate::config::raw_config::{RawConfig, AccessHelpers};
 use crate::config::ConfigError;
 use crate::macros::actions::Action;
 
-/// Constructors an `Action::Wait` from `raw_data` `RawConfig`.
+/// Constructs an `Action::Wait` from `raw_data` `RawConfig`.
 ///
 /// There are two permissible forms for `raw_data` to construct an `Action::Wait`:
 ///
@@ -15,11 +15,13 @@ use crate::macros::actions::Action;
 ///
 ///   `duration` should be a positive integer; this is how long the action should wait, expressed in
 ///   microseconds.
-///   If both `duration` and `duration_ms` are specified, the value for `duration` is used.
+///   If both `duration` and `duration_ms` are specified, the value for `duration` is used, unless
+///   `duration` contains an invalid (negative) value.
 ///
 ///   `duration_ms` should be a positive integer; this is how long the action should wait, expressed
-///   in microseconds.
-///   If both `duration` and `duration_ms` are specified, the value for `duration` is used.
+///   in milliseconds.
+///   If both `duration` and `duration_ms` are specified, the value for `duration` is used, unless
+///   `duration` contains an invalid (negative) value.
 ///
 /// ## Errors
 /// The function returns a `ConfigError` in any of the following circumstances:

@@ -44,6 +44,7 @@ pub enum Action {
     /// Blocks the thread for a given amount of microseconds, to allow some previous action to be
     /// processed by the application that received input (if applicable)
     Wait {
+        /// Duration to block the thread for, expressed in microseconds
         duration: u64
     }
 
@@ -75,8 +76,7 @@ impl Action {
     }
 }
 
-// TODO: this should a parameter for KeySequence and EnterText
-const DELAY_BETWEEN_KEYS_US: u32 = 150000;
+const DELAY_BETWEEN_KEYS_US: u32 = 100;
 
 /// Struct to give access to running Actions
 pub struct ActionRunner {
@@ -107,9 +107,9 @@ impl ActionRunner {
 
             Action::Shell { command, args, env_vars } => {
                 self.run_shell(command, args.clone(), env_vars.clone());
-            },
+            }
 
-            Action::Wait { duration} => {
+            Action::Wait { duration } => {
                 self.run_wait(*duration);
             }
         }

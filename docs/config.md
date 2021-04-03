@@ -394,13 +394,13 @@ data:
   duration: 2000 # 2 milliseconds
 ```
 
-Available fields are the following:
+The following fields are available:
 
 - `duration`: Duration of time to wait, expressed in microseconds
 - `duration_ms`: Duration of time to wait, expressed in milliseconds
 
-Either `duration` or `duration_ms` must be present. The value must be a positive integer (or 0).
-If both fields are present, `duration` is used, unless its value is invalid and the value of `duration_ms` is not.
+Either `duration` or `duration_ms` must be set. The value must be 0 or greater.
+If both fields are present, `duration` is used, unless it contains a negative value.
 
 ##### Shortened version
 
