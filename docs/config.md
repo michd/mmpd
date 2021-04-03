@@ -292,7 +292,7 @@ data:
 ```
 
 - `type`: specifies which kind of action. Its value determines what data fields are required and how it is executed.
-  Must be one of `key_sequence`, `enter_text`, or `shell` exactly.
+  Must be one of `key_sequence`, `enter_text`, `shell`, or `wait` exactly.
 - `data`: Object containing fields that differ based on `type`.
 
 #### key_sequence
@@ -359,7 +359,7 @@ Shell actions allow you to run arbitrary programs, with arbitrary arguments and 
 follows:
 
 ```yaml
-type: shell,
+type: shell
 data:
   command: "/usr/bin/echo"
   args:
@@ -381,6 +381,41 @@ The fields are the following:
 - `command`: Required. An absolute path to an executable file to run
 - `args`: Optional. An array of arguments to pass to the command
 - `env_vars`: Optional. An object with keys and values to set as environment variables
+
+#### wait 
+
+Wait actions insert a delay before continuing. They are helpful to allow some time between key sequences, to allow a
+program processing them time to catch up.
+An example follows:
+
+```yaml
+type: wait
+data:
+  duration: 2000 # 2 milliseconds
+```
+
+Available fields are the following:
+
+- `duration`: Duration of time to wait, expressed in microseconds
+- `duration_ms`: Duration of time to wait, expressed in milliseconds
+
+Either `duration` or `duration_ms` must be present. The value must be a positive integer (or 0).
+If both fields are present, `duration` is used, unless its value is invalid and the value of `duration_ms` is not.
+
+##### Shortened version
+
+You can specify duration in microseconds directly for the `data` field. The following two examples are equivalent.
+
+```yaml
+type: wait
+data: 2000
+```
+
+```yaml
+type: wait
+data:
+  duration: 2000
+```
 
 ---
 
