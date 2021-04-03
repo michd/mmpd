@@ -87,17 +87,6 @@ impl ActionRunner {
         })
     }
 
-    #[cfg(test)]
-    fn test_new(
-        kb_adapter: Box<dyn KeyboardControlAdapter>,
-        shell_adapter: Box<dyn Shell>
-    ) -> Option<ActionRunner> {
-        Some(ActionRunner {
-            kb_adapter,
-            shell_adapter
-        })
-    }
-
     /// Executes a given action based on action type
     pub fn run(&self, action: &Action) {
         match action {
@@ -184,10 +173,10 @@ mod tests {
         }
 
         fn into_runner(self) -> ActionRunner {
-            ActionRunner::test_new(
-                self.kb_adapter.unwrap_or(Box::new(MockKeyboardControlAdapter::new())),
-                self.shell_adapter.unwrap_or(Box::new(MockShell::new()))
-            ).unwrap()
+            ActionRunner {
+                kb_adapter: self.kb_adapter.unwrap_or(Box::new(MockKeyboardControlAdapter::new())),
+                shell_adapter: self.shell_adapter.unwrap_or(Box::new(MockShell::new()))
+            }
         }
     }
 
