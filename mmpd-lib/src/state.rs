@@ -16,7 +16,7 @@ pub trait State {
 
     fn matches_scope(&self, scope: &Option<Scope>) -> bool;
 
-    fn matches(&self, val: &Precondition) -> bool;
+    fn matches_precondition(&self, precondition: &Precondition) -> bool;
 }
 
 pub fn new(
@@ -85,7 +85,10 @@ impl State for StateImpl {
         }
     }
 
-    fn matches(&self, _val: &Precondition) -> bool {
-        true
+    fn matches_precondition(&self, precondition: &Precondition) -> bool {
+        match precondition {
+            Precondition::Midi(condition) => self.midi.matches(condition),
+            Precondition::Other => true
+        }
     }
 }

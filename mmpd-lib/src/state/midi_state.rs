@@ -1,5 +1,7 @@
 use crate::midi::MidiMessage;
 use std::collections::{HashSet, HashMap};
+use crate::macros::preconditions::midi::MidiPrecondition;
+use crate::match_checker::MatchChecker;
 
 /// State tracking container for MIDI messages.
 ///
@@ -93,10 +95,48 @@ impl MidiState {
             _ => {}
         }
     }
+
+    /// Checks if a MidiPrecondition matches against this MIDI state
+    pub fn matches(&self, precondition: &MidiPrecondition) -> bool {
+        match precondition {
+            MidiPrecondition::NoteOn { channel_match, key_match } => {
+                self.notes_on.iter().any(|note| {
+                    channel_match.matches(&(note.channel as u32)) &&
+                        key_match.matches(&(note.key as u32))
+                })
+            }
+
+            MidiPrecondition::Control {
+                channel_match,
+                control_match,
+                value_match
+            } => {
+                self.controls.iter().any(|(control, value)| {
+                    channel_match.matches(&(control.channel as u32)) &&
+                        control_match.matches(&(control.control as u32)) &&
+                        value_match.matches(&(*value as u32))
+                })
+            }
+
+            MidiPrecondition::Program { channel_match, program_match } => {
+                self.programs.iter().any(|(channel, program)| {
+                    channel_match.matches(&(*channel as u32)) &&
+                        program_match.matches(&(*program as u32))
+                })
+            }
+
+            MidiPrecondition::PitchBend { channel_match, value_match } => {
+                self.pitch_bend_values.iter().any(|(channel, value)| {
+                    channel_match.matches(&(*channel as u32)) &&
+                        value_match.matches(&(*value as u32))
+                })
+            }
+        }
+    }
 }
 
 #[cfg(test)]
-mod tests {
+mod state_keeping_tests {
     use crate::midi::MidiMessage;
     use crate::state::midi_state::{MidiState, Note, Control};
 
@@ -306,5 +346,205 @@ mod tests {
         state.process_message(&pitchbend_change1);
 
         assert_eq!(state.pitch_bend_values.get(&channel), Some(&421));
+    }
+}
+
+#[cfg(test)]
+mod precondition_matching_tests {
+    use crate::macros::preconditions::midi::MidiPrecondition;
+    use crate::match_checker::NumberMatcher;
+    use crate::state::midi_state::{MidiState, Note, Control};
+
+    #[test]
+    fn matches_a_held_note() {
+        let condition = MidiPrecondition::NoteOn {
+            channel_match: Some(NumberMatcher::Val(1)),
+            key_match: Some(NumberMatcher::Val(20))
+        };
+
+        let mut state = MidiState::new();
+
+        assert!(!state.matches(&condition));
+
+        state.notes_on.insert(Note { channel: 1, key: 20 });
+
+        assert!(state.matches(&condition));
+    }
+
+    #[test]
+    fn does_not_match_held_note_if_channel_does_not_match() {
+        let condition = MidiPrecondition::NoteOn {
+            channel_match: Some(NumberMatcher::Val(1)),
+            key_match: Some(NumberMatcher::Val(20))
+        };
+
+        let mut state = MidiState::new();
+
+        state.notes_on.insert(Note { channel: 3, key: 20 });
+
+        assert!(!state.matches(&condition));
+    }
+
+    #[test]
+    fn does_not_match_held_note_if_key_does_not_match() {
+        let condition = MidiPrecondition::NoteOn {
+            channel_match: Some(NumberMatcher::Val(1)),
+            key_match: Some(NumberMatcher::Val(20))
+        };
+
+        let mut state = MidiState::new();
+        state.notes_on.insert(Note { channel: 1, key: 40 });
+
+        assert!(!state.matches(&condition));
+    }
+
+    #[test]
+    fn matches_a_control_value() {
+        let condition = MidiPrecondition::Control {
+            channel_match: Some(NumberMatcher::Val(1)),
+            control_match: Some(NumberMatcher::Val(20)),
+            value_match: Some(NumberMatcher::Val(40))
+        };
+
+        let mut state = MidiState::new();
+
+        assert!(!state.matches(&condition));
+
+        state.controls.insert(Control { channel: 1, control: 20 }, 40);
+
+        assert!(state.matches(&condition));
+    }
+
+    #[test]
+    fn does_not_match_a_control_if_channel_does_not_match() {
+        let condition = MidiPrecondition::Control {
+            channel_match: Some(NumberMatcher::Val(1)),
+            control_match: Some(NumberMatcher::Val(20)),
+            value_match: Some(NumberMatcher::Val(40))
+        };
+
+        let mut state = MidiState::new();
+
+        state.controls.insert(Control { channel: 4, control: 20 }, 40);
+
+        assert!(!state.matches(&condition));
+    }
+
+    #[test]
+    fn does_not_match_a_control_if_control_number_does_not_match() {
+        let condition = MidiPrecondition::Control {
+            channel_match: Some(NumberMatcher::Val(1)),
+            control_match: Some(NumberMatcher::Val(20)),
+            value_match: Some(NumberMatcher::Val(40))
+        };
+
+        let mut state = MidiState::new();
+
+        state.controls.insert(Control { channel: 1, control: 30 }, 40);
+
+        assert!(!state.matches(&condition));
+    }
+
+    #[test]
+    fn does_not_match_a_control_if_value_does_not_match() {
+        let condition = MidiPrecondition::Control {
+            channel_match: Some(NumberMatcher::Val(1)),
+            control_match: Some(NumberMatcher::Val(20)),
+            value_match: Some(NumberMatcher::Val(40))
+        };
+
+        let mut state = MidiState::new();
+
+        state.controls.insert(Control { channel: 1, control: 20 }, 60);
+
+        assert!(!state.matches(&condition));
+    }
+
+    #[test]
+    fn matches_a_program() {
+        let condition = MidiPrecondition::Program {
+            channel_match: Some(NumberMatcher::Val(1)),
+            program_match: Some(NumberMatcher::Val(20))
+        };
+
+        let mut state = MidiState::new();
+
+        assert!(!state.matches(&condition));
+
+        state.programs.insert(1, 20);
+
+        assert!(state.matches(&condition));
+    }
+
+    #[test]
+    fn does_not_match_program_if_channel_does_not_match() {
+        let condition = MidiPrecondition::Program {
+            channel_match: Some(NumberMatcher::Val(1)),
+            program_match: Some(NumberMatcher::Val(20))
+        };
+
+        let mut state = MidiState::new();
+
+        state.programs.insert(4, 20);
+
+        assert!(!state.matches(&condition));
+    }
+
+    #[test]
+    fn does_not_match_program_if_program_does_not_match() {
+        let condition = MidiPrecondition::Program {
+            channel_match: Some(NumberMatcher::Val(1)),
+            program_match: Some(NumberMatcher::Val(20))
+        };
+
+        let mut state = MidiState::new();
+
+        state.programs.insert(1, 40);
+
+        assert!(!state.matches(&condition));
+    }
+
+    #[test]
+    fn matches_pitch_bend_value() {
+        let condition = MidiPrecondition::PitchBend {
+            channel_match: Some(NumberMatcher::Val(1)),
+            value_match: Some(NumberMatcher::Val(20))
+        };
+
+        let mut state = MidiState::new();
+
+        assert!(!state.matches(&condition));
+
+        state.pitch_bend_values.insert(1, 20);
+
+        assert!(state.matches(&condition));
+    }
+
+    #[test]
+    fn does_not_match_pitch_bend_value_if_channel_does_not_match() {
+        let condition = MidiPrecondition::PitchBend {
+            channel_match: Some(NumberMatcher::Val(1)),
+            value_match: Some(NumberMatcher::Val(20))
+        };
+
+        let mut state = MidiState::new();
+
+        state.pitch_bend_values.insert(4, 20);
+
+        assert!(!state.matches(&condition));
+    }
+
+    #[test]
+    fn does_not_match_pitch_bend_value_if_value_does_not_match() {
+        let condition = MidiPrecondition::PitchBend {
+            channel_match: Some(NumberMatcher::Val(1)),
+            value_match: Some(NumberMatcher::Val(20))
+        };
+
+        let mut state = MidiState::new();
+
+        state.pitch_bend_values.insert(1, 40);
+
+        assert!(!state.matches(&condition));
     }
 }

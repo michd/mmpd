@@ -1,4 +1,9 @@
+pub mod midi;
+
+use midi::MidiPrecondition;
+
 #[derive(PartialEq, Debug)]
 pub enum Precondition {
-    Other
+    Midi(MidiPrecondition),
+    Other // Placeholder
 }

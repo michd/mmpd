@@ -30,7 +30,7 @@ impl EventMatcher {
         // If any one precondition is not satisfies, no further precondition is evaluated,
         // nor is the event object matched against MatcherType.
         if let Some(conditions) = &self.required_preconditions {
-            if conditions.iter().any(|condition| !state.matches(condition)) {
+            if conditions.iter().any(|condition| !state.matches_precondition(condition)) {
                 return false;
             }
         }
