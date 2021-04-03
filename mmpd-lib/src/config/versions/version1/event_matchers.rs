@@ -182,9 +182,9 @@ mod tests {
                 }),
 
                 required_preconditions: Some(vec![
-                    Precondition {},
-                    Precondition {},
-                    Precondition {}
+                    Precondition::Other,
+                    Precondition::Other,
+                    Precondition::Other
                 ])
             }
         );
