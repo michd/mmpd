@@ -1,5 +1,6 @@
 use crate::keyboard_control::{self, KeyboardControlAdapter};
 use crate::shell::{Shell, ShellImpl};
+use std::{thread, time};
 
 /// Action run in response to a MIDI event
 /// Any Action value can be run through ActionRunner::run.
@@ -40,6 +41,13 @@ pub enum Action {
         env_vars: Option<Vec<(String, String)>>
     },
 
+    /// Blocks the thread for a given amount of microseconds, to allow some previous action to be
+    /// processed by the application that received input (if applicable)
+    Wait {
+        /// Duration to block the thread for, expressed in microseconds
+        duration: u64
+    }
+
     // TODO: add a single action type for controlling aspects
     // of this program itself (like exiting).
     // The program control data can be represented by another enum of available controls,
@@ -68,8 +76,7 @@ impl Action {
     }
 }
 
-// TODO: this should a parameter for KeySequence and EnterText
-const DELAY_BETWEEN_KEYS_US: u32 = 150000;
+const DELAY_BETWEEN_KEYS_US: u32 = 100;
 
 /// Struct to give access to running Actions
 pub struct ActionRunner {
@@ -87,17 +94,6 @@ impl ActionRunner {
         })
     }
 
-    #[cfg(test)]
-    fn test_new(
-        kb_adapter: Box<dyn KeyboardControlAdapter>,
-        shell_adapter: Box<dyn Shell>
-    ) -> Option<ActionRunner> {
-        Some(ActionRunner {
-            kb_adapter,
-            shell_adapter
-        })
-    }
-
     /// Executes a given action based on action type
     pub fn run(&self, action: &Action) {
         match action {
@@ -111,7 +107,11 @@ impl ActionRunner {
 
             Action::Shell { command, args, env_vars } => {
                 self.run_shell(command, args.clone(), env_vars.clone());
-            },
+            }
+
+            Action::Wait { duration } => {
+                self.run_wait(*duration);
+            }
         }
     }
 
@@ -146,6 +146,10 @@ impl ActionRunner {
         // This needs further working out to get sensible var names.
 
         self.shell_adapter.execute(command, args, env_vars);
+    }
+
+    fn run_wait(&self, duration: u64) {
+        thread::sleep(time::Duration::from_micros(duration));
     }
 }
 
@@ -184,10 +188,10 @@ mod tests {
         }
 
         fn into_runner(self) -> ActionRunner {
-            ActionRunner::test_new(
-                self.kb_adapter.unwrap_or(Box::new(MockKeyboardControlAdapter::new())),
-                self.shell_adapter.unwrap_or(Box::new(MockShell::new()))
-            ).unwrap()
+            ActionRunner {
+                kb_adapter: self.kb_adapter.unwrap_or(Box::new(MockKeyboardControlAdapter::new())),
+                shell_adapter: self.shell_adapter.unwrap_or(Box::new(MockShell::new()))
+            }
         }
     }
 
@@ -303,6 +307,10 @@ mod tests {
             ])
         });
     }
+
+    // TODO: way to test `Action::Wait`. It's a very straightforward one, but testing is good.
+    // I don't know if there's a way to mock thread::sleep somehow without doing a whole adapter
+    // thing for it again like Action::Shell.
 
     // Helper function to see if two vectors are identical
     // TODO: perhaps move to some test util module.

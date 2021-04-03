@@ -1,6 +1,7 @@
 mod key_sequence;
 mod enter_text;
 mod shell;
+mod wait;
 
 use crate::config::raw_config::{RCHash, AccessHelpers, k};
 use crate::macros::actions::Action;
@@ -8,6 +9,7 @@ use crate::config::ConfigError;
 use key_sequence::build_action_key_sequence;
 use enter_text::build_action_enter_text;
 use shell::build_action_shell;
+use wait::build_action_wait;
 
 /// Constructs an `Action` from a `raw_action` `RCHash`.
 ///
@@ -43,6 +45,7 @@ pub fn build_action(raw_action: &RCHash) -> Result<Action, ConfigError> {
     const KEY_SEQUENCE_TYPE: &str = "key_sequence";
     const ENTER_TEXT_TYPE: &str = "enter_text";
     const SHELL_TYPE: &str = "shell";
+    const WAIT_TYPE: &str = "wait";
 
     let data_hash = raw_action.get(&k(DATA_FIELD));
 
@@ -56,6 +59,7 @@ pub fn build_action(raw_action: &RCHash) -> Result<Action, ConfigError> {
         KEY_SEQUENCE_TYPE => build_action_key_sequence(data_hash)?,
         ENTER_TEXT_TYPE => build_action_enter_text(data_hash)?,
         SHELL_TYPE => build_action_shell(data_hash)?,
+        WAIT_TYPE => build_action_wait(data_hash)?,
 
         _ => {
             return Err(ConfigError::InvalidConfig(
