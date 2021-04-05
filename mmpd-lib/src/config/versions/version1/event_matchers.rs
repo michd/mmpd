@@ -91,7 +91,7 @@ mod tests {
     use crate::config::versions::version1::event_matchers::build_event_matcher;
     use crate::macros::event_matching::{EventMatcher, MatcherType};
     use crate::macros::event_matching::midi::MidiEventMatcher;
-    use crate::macros::preconditions::Precondition;
+    use crate::macros::preconditions::{Precondition, PreconditionType};
 
     #[test]
     fn returns_error_if_missing_type_field() {
@@ -182,9 +182,9 @@ mod tests {
                 }),
 
                 required_preconditions: Some(vec![
-                    Precondition::Other,
-                    Precondition::Other,
-                    Precondition::Other
+                    Precondition { invert: false, condition: PreconditionType::Other },
+                    Precondition { invert: false, condition: PreconditionType::Other },
+                    Precondition { invert: false, condition: PreconditionType::Other },
                 ])
             }
         );

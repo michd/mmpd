@@ -3,7 +3,7 @@ mod midi_state;
 use crate::macros::Scope;
 use crate::focus::adapters::FocusAdapter;
 use crate::match_checker::MatchChecker;
-use crate::macros::preconditions::Precondition;
+use crate::macros::preconditions::{Precondition, PreconditionType};
 
 #[cfg(test)]
 use mockall::automock;
@@ -86,9 +86,16 @@ impl State for StateImpl {
     }
 
     fn matches_precondition(&self, precondition: &Precondition) -> bool {
-        match precondition {
-            Precondition::Midi(condition) => self.midi.matches(condition),
-            Precondition::Other => true
+        let normal_match = match &precondition.condition {
+            PreconditionType::Midi(condition) => self.midi.matches(condition),
+            PreconditionType::Other => true
+        };
+
+
+        if precondition.invert  {
+            !normal_match
+        } else {
+            normal_match
         }
     }
 }
