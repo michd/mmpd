@@ -8,7 +8,6 @@ pub struct Precondition {
     pub condition: PreconditionType
 }
 
-// TODO: turn back into a struct so it can have an `invert` field
 #[derive(PartialEq, Debug)]
 pub enum PreconditionType {
     Midi(MidiPrecondition),

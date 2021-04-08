@@ -164,6 +164,7 @@ mod tests {
             }
         );
 
+        // Sparse version
         let mut hash = RCHash::new();
         hash.insert(k("condition_type"), k("control"));
 
@@ -198,6 +199,7 @@ mod tests {
             }
         );
 
+        // Sparse version
         let mut hash = RCHash::new();
         hash.insert(k("condition_type"), k("program"));
 
@@ -231,6 +233,7 @@ mod tests {
             }
         );
 
+        // Sparse version
         let mut hash = RCHash::new();
         hash.insert(k("condition_type"), k("pitch_bend"));
 
