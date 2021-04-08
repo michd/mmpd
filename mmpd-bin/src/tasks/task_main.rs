@@ -39,7 +39,7 @@ pub fn task_main(cli_matches: Option<&ArgMatches>) {
     }
 
     let action_runner = action_runner.unwrap();
-    let state = state::new(focus_adapter);
+    let mut state = state::new(focus_adapter);
 
     let (tx, rx) = get_event_bus();
     let handle = midi_adapter.start_listening(&midi_device_name, tx);
@@ -69,6 +69,8 @@ pub fn task_main(cli_matches: Option<&ArgMatches>) {
     }
 
     for event in rx {
+        state.process_event(&event);
+
         for macro_item in config.macros.iter() {
             if let Some(actions) = macro_item.evaluate(&event, &state) {
                 if let Some(macro_name) = macro_item.name() {
