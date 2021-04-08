@@ -7,7 +7,7 @@ use crate::macros::preconditions::Precondition;
 use crate::config::versions::version1::precondition::build_precondition;
 use midi::build_midi_event_matcher;
 
-/// Constructs an `EventMatcher` instance (in a `Box`) from a Raw `raw_event_matcher`
+/// Constructs an `EventMatcher` instance from a Raw `raw_event_matcher`
 /// `RCHash`'s fields.
 ///
 /// Event matchers are expected to follow this structure:
@@ -25,7 +25,7 @@ use midi::build_midi_event_matcher;
 /// `type` is required. Its value must be one of the implemented event types. Currently, these are:
 ///     - midi
 ///
-/// `data` is not meant to be a hash, but is not strictly required. Depending on the event type, it
+/// `data` is meant to be a hash, but is not strictly required. Depending on the event type, it
 /// may be required, but this function does not enforce it.
 ///
 /// `required_preconditions` is optional. If specified, must be a list of "preconditions". The
@@ -37,7 +37,7 @@ use midi::build_midi_event_matcher;
 /// ## Errors
 /// This function will return `ConfigError` under any of these conditions:
 ///
-/// - `type` field is missing or is not a `RawCondition::String`
+/// - `type` field is missing or is not a `RawConfig::String`
 /// - The value for the `type` field does not match any known event matcher types; see above
 /// - Down the stream, a more specific event matcher (such as `MidiEventMatcher`) fails to be
 ///   constructed for any reason
@@ -91,7 +91,7 @@ mod tests {
     use crate::config::versions::version1::event_matchers::build_event_matcher;
     use crate::macros::event_matching::{EventMatcher, MatcherType};
     use crate::macros::event_matching::midi::MidiEventMatcher;
-    use crate::macros::preconditions::Precondition;
+    use crate::macros::preconditions::{Precondition, PreconditionType};
 
     #[test]
     fn returns_error_if_missing_type_field() {
@@ -182,9 +182,9 @@ mod tests {
                 }),
 
                 required_preconditions: Some(vec![
-                    Precondition {},
-                    Precondition {},
-                    Precondition {}
+                    Precondition { invert: false, condition: PreconditionType::Other },
+                    Precondition { invert: false, condition: PreconditionType::Other },
+                    Precondition { invert: false, condition: PreconditionType::Other },
                 ])
             }
         );

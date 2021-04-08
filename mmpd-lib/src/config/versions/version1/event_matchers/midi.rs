@@ -3,8 +3,7 @@ use crate::config::ConfigError;
 use crate::config::versions::version1::primitive_matchers::build_number_matcher;
 use crate::macros::event_matching::midi::MidiEventMatcher;
 
-/// Constructs a `MidiEventMatcher` (returned as a `Box<dyn MatchChecker<MidiMessage>>`) from a
-/// `data` `RCHash`.
+/// Constructs a `MidiEventMatcher` from a `data` `RCHash`.
 ///
 /// `data` should be structured as follows:
 /// ```yaml

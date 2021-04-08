@@ -48,3 +48,22 @@ global_macros:
     actions:
       - type: key_sequence
         data: "ctrl+c"
+
+  - name: "precondition test"
+    matching_events:
+      - type: midi
+        data:
+          message_type: note_on
+          channel: 0
+          key: 65
+    required_preconditions:
+      - type: midi
+        data:
+          condition_type: note_on
+          channel: 0
+          key: 64
+    actions:
+      - type: enter_text
+        data: "Precondition works!"
+      - type: key_sequence
+        data: "Return"

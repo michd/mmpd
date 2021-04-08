@@ -1,10 +1,15 @@
+pub mod midi;
+
+use midi::MidiPrecondition;
+
 #[derive(PartialEq, Debug)]
 pub struct Precondition {
-
+    pub invert: bool,
+    pub condition: PreconditionType
 }
 
-impl Precondition {
-    pub fn new() -> Precondition {
-        Precondition {}
-    }
+#[derive(PartialEq, Debug)]
+pub enum PreconditionType {
+    Midi(MidiPrecondition),
+    Other // Placeholder
 }

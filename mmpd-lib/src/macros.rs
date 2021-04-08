@@ -148,7 +148,7 @@ impl Macro {
         }
 
         if let Some(conditions) = &self.required_preconditions {
-            if conditions.iter().any(|condition| !state.matches(condition)) {
+            if conditions.iter().any(|condition| !state.matches_precondition(condition)) {
                 return None;
             }
         }

@@ -1,16 +1,22 @@
+mod midi_state;
+
 use crate::macros::Scope;
 use crate::focus::adapters::FocusAdapter;
 use crate::match_checker::MatchChecker;
-use crate::macros::preconditions::Precondition;
+use crate::macros::preconditions::{Precondition, PreconditionType};
 
 #[cfg(test)]
 use mockall::automock;
+use crate::macros::event_matching::Event;
+use crate::state::midi_state::MidiState;
 
 #[cfg_attr(test, automock)]
 pub trait State {
+    fn process_event(&mut self, event: &Event);
+
     fn matches_scope(&self, scope: &Option<Scope>) -> bool;
 
-    fn matches(&self, val: &Precondition) -> bool;
+    fn matches_precondition(&self, precondition: &Precondition) -> bool;
 }
 
 pub fn new(
@@ -20,7 +26,8 @@ pub fn new(
 }
 
 struct StateImpl {
-    focus_adapter: Box<dyn FocusAdapter>
+    focus_adapter: Box<dyn FocusAdapter>,
+    midi: MidiState
 }
 
 impl StateImpl {
@@ -28,12 +35,20 @@ impl StateImpl {
         focus_adapter: Box<dyn FocusAdapter>
     ) -> Box<dyn State> {
         Box::new(StateImpl {
-            focus_adapter
+            focus_adapter,
+            midi: MidiState::new()
         })
     }
 }
 
 impl State for StateImpl {
+    fn process_event(&mut self, event: &Event) {
+        match event {
+            Event::Midi(midi_msg) => self.midi.process_message(midi_msg),
+            Event::Other => {}
+        }
+    }
+
     fn matches_scope(&self, scope: &Option<Scope>) -> bool {
         if scope.is_none() {
             return true
@@ -70,7 +85,17 @@ impl State for StateImpl {
         }
     }
 
-    fn matches(&self, _val: &Precondition) -> bool {
-        true
+    fn matches_precondition(&self, precondition: &Precondition) -> bool {
+        let normal_match = match &precondition.condition {
+            PreconditionType::Midi(condition) => self.midi.matches(condition),
+            PreconditionType::Other => true
+        };
+
+
+        if precondition.invert  {
+            !normal_match
+        } else {
+            normal_match
+        }
     }
 }
