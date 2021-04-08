@@ -23,6 +23,9 @@ What's implemented so far:
   - Event matchers (describes an event to matched to trigger an event)
     - Midi Event matcher with flexible parameter value matching options
   - Macros (combining scopes, event matchers, and actions into one package)
+  - Preconditions (state that must be satisfied in addition to an event matching in
+    order to execute a macro)
+    - Midi preconditions for note_on, control, program, pitch_bend
 - Configuration: YAML parser to intermediary "RawConfig" format, plus a parser
   from RawConfig into the aforementioned data structures
 - Command line interfaces covering
@@ -36,7 +39,6 @@ including some future plans.
 
 ## To do:
 
-- Implement the state keeping component (MIDI etc) and precondition data structures
 - Add some action enum types that allow control of the program (like exiting it, reloading config)
 - Investigate portability to non-linux platforms
 

@@ -193,9 +193,7 @@ key:
 ```
 will match keys 12, 14, and all the keys from 32 to 44 inclusive.
 
-### Preconditions (NOT IMPLEMENTED YET)
-
-**NOTE: Preconditions are not yet implemented.**
+### Preconditions
 
 A precondition is something that must be satisfied before a macro is allowed to run. These are based on state data
 the program keeps track of.
@@ -217,7 +215,7 @@ expansion to other types later.
   be considered not a match, and vice versa. Optional field, defaulting to `false`.
 - `data`: An object with fields relevant to the precondition type. These specify the condition that must be met.
 
-#### MIDI Preconditions (NOT IMPLEMENTED YET)
+#### MIDI Preconditions 
 
 The program keeps track of notes that are currently on, as well as any control change and program change values.
 
