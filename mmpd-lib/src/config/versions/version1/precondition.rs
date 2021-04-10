@@ -40,6 +40,10 @@ pub (crate) fn build_precondition(raw_precondition: &RCHash) -> Result<Precondit
 
     const TYPE_MIDI: &str = "midi";
 
+    // Allows a building a simple do-nothing precondition in tests
+    #[cfg(test)]
+    const TYPE_OTHER: &str = "other";
+
     let condition_type = raw_precondition.get_string(TYPE_FIELD).ok_or_else(|| {
         ConfigError::InvalidConfig(
             format!("precondition missing valid (string) '{}' field", TYPE_FIELD)
@@ -54,6 +58,10 @@ pub (crate) fn build_precondition(raw_precondition: &RCHash) -> Result<Precondit
         invert,
         condition: match condition_type {
             TYPE_MIDI => PreconditionType::Midi(build_midi_precondition(data)?),
+
+            // Allows building a simple do-nothing precondition in tests
+            #[cfg(test)]
+            TYPE_OTHER => PreconditionType::Other,
 
             _ => {
                 return Err(ConfigError::InvalidConfig(
