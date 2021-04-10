@@ -53,6 +53,10 @@ scopes:
 #               count: 6
 #           - type: key_sequence
 #             data: "Return"
+          # key_sequences can also be simplified by space-separating the sequences.
+          # This lets you rewrite the actions section of the above macro like:
+#           - type: key_sequence
+#             data: "ctrl+shift+a Tab Tab Tab Tab Tab Tab Return"
 
 # Add any macros that should work regardless of foreground application
 global_macros:
