@@ -47,14 +47,30 @@ pub enum Action {
     Wait {
         /// Duration to block the thread for, expressed in microseconds
         duration: u64
-    }
+    },
 
-    // TODO: add a single action type for controlling aspects
-    // of this program itself (like exiting).
-    // The program control data can be represented by another enum of available controls,
-    // wrapping relevant data
+    /// Controls the application itself via a ControlAction sub-action.
+    Control(ControlAction)
 
     // This can be expanded upon
+}
+
+/// Action that controls application execution, allowing application control through macro
+/// actions.
+#[derive(PartialEq, Debug, Clone)]
+pub enum ControlAction {
+    /// Reread the configuration file from disk, and uses reloaded macros.
+    /// Existing state in memory (keys held etc) is left as-is, and this won't change which
+    /// MIDI device is being listened to, even if that changed in the config file.
+    /// If you need to change MIDI devices, use `Restart` instead (which will also lose state).
+    ReloadMacros,
+
+    /// Restarts the program, mimicking killing the process and running it again with the same
+    /// arguments.
+    Restart,
+
+    /// Exits the program entirely
+    Exit
 }
 
 impl Action {
@@ -82,7 +98,7 @@ const DELAY_BETWEEN_KEYS_US: u32 = 100;
 /// Struct to give access to running Actions
 pub struct ActionRunner {
     kb_adapter: Box<dyn KeyboardControlAdapter>,
-    shell_adapter: Box<dyn Shell>
+    shell_adapter: Box<dyn Shell>,
 }
 
 impl ActionRunner {
@@ -96,7 +112,9 @@ impl ActionRunner {
     }
 
     /// Executes a given action based on action type
-    pub fn run(&self, action: &Action) {
+    /// If the action is an `Action:Control`, returns `Some(&control_action)`.
+    /// In all other cases, returns `None`.
+    pub fn run(&self, action: &Action) -> Option<ControlAction> {
         match action {
             Action::KeySequence { sequence, count, delay} => {
                 self.run_key_sequence(sequence, *count, *delay);
@@ -113,7 +131,13 @@ impl ActionRunner {
             Action::Wait { duration } => {
                 self.run_wait(*duration);
             }
+
+            Action::Control(control_action) => {
+                return Some(control_action.clone());
+            }
         }
+
+        return None;
     }
 
     fn run_key_sequence(&self, sequence: &str, count: usize, delay: Option<u32>) {
@@ -161,7 +185,7 @@ impl ActionRunner {
 
 #[cfg(test)]
 mod tests {
-    use crate::macros::actions::{ActionRunner, Action, DELAY_BETWEEN_KEYS_US};
+    use crate::macros::actions::{ActionRunner, Action, DELAY_BETWEEN_KEYS_US, ControlAction};
     use crate::keyboard_control::adapters::MockKeyboardControlAdapter;
     use crate::shell::{Shell, MockShell};
     use mockall::predicate::eq;
@@ -214,7 +238,9 @@ mod tests {
             .set_keyboard_adapter(Box::new(mock_keyb_adapter))
             .into_runner();
 
-        runner.run(&Action::key_sequence("ctrl+alt+delete"));
+        let result = runner.run(&Action::key_sequence("ctrl+alt+delete"));
+
+        assert!(result.is_none());
     }
 
     #[test]
@@ -230,11 +256,13 @@ mod tests {
             .set_keyboard_adapter(Box::new(mock_keyb_adapter))
             .into_runner();
 
-        runner.run(&Action::KeySequence {
+        let result = runner.run(&Action::KeySequence {
             sequence: "Tab".to_string(),
             count: 3,
             delay: None
         });
+
+        assert!(result.is_none());
     }
 
     #[test]
@@ -260,12 +288,14 @@ mod tests {
             .set_keyboard_adapter(Box::new(mock_keyb_adapter))
             .into_runner();
 
-        runner.run(&Action::KeySequence {
+        let result = runner.run(&Action::KeySequence {
             // Should deal with arbitrary amounts of space characters in between sequences
             sequence: "ctrl+t Tab   Tab  Return".to_string(),
             count: 1,
             delay: None
         });
+
+        assert!(result.is_none());
     }
 
     #[test]
@@ -291,12 +321,14 @@ mod tests {
             .set_keyboard_adapter(Box::new(mock_keyb_adapter))
             .into_runner();
 
-        runner.run(&Action::KeySequence {
+        let result = runner.run(&Action::KeySequence {
             // Should deal with arbitrary amounts of space characters in between sequences
             sequence: "ctrl+t Tab   Tab  Return".to_string(),
             count: 3,
             delay: None
         });
+
+        assert!(result.is_none());
     }
 
     #[test]
@@ -312,7 +344,9 @@ mod tests {
             .set_keyboard_adapter(Box::new(mock_keyb_adapter))
             .into_runner();
 
-        runner.run(&Action::enter_text("hello"));
+        let result = runner.run(&Action::enter_text("hello"));
+
+        assert!(result.is_none());
     }
 
     #[test]
@@ -328,11 +362,13 @@ mod tests {
             .set_keyboard_adapter(Box::new(mock_keyb_adapter))
             .into_runner();
 
-        runner.run(&Action::EnterText {
+        let result = runner.run(&Action::EnterText {
             text: "hello".to_string(),
             count: 3,
             delay: None
         });
+
+        assert!(result.is_none());
     }
 
     #[test]
@@ -366,7 +402,7 @@ mod tests {
             .set_shell_adapter(Box::new(mock_shell))
             .into_runner();
 
-        runner.run(&Action::Shell {
+        let result = runner.run(&Action::Shell {
             command: "test_cmd".to_string(),
             args: Some(vec!["arg1".to_string(), "arg2".to_string()]),
             env_vars: Some(vec![
@@ -374,11 +410,24 @@ mod tests {
                 ("key2".to_string(), "val2".to_string())
             ])
         });
+
+        assert!(result.is_none());
     }
 
     // TODO: way to test `Action::Wait`. It's a very straightforward one, but testing is good.
     // I don't know if there's a way to mock thread::sleep somehow without doing a whole adapter
     // thing for it again like Action::Shell.
+
+    #[test]
+    fn passes_through_control_actions() {
+        let action = Action::Control(ControlAction::Exit);
+
+        let runner = ActionRunnerBuilder::new().into_runner();
+
+        let result = runner.run(&action);
+
+        assert_eq!(result, Some(ControlAction::Exit));
+    }
 
     // Helper function to see if two vectors are identical
     // TODO: perhaps move to some test util module.
