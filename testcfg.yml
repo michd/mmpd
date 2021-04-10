@@ -17,13 +17,7 @@ scopes:
               key: 48
         actions:
           - type: key_sequence
-            data: "ctrl+shift+a"
-          - type: key_sequence
-            data:
-              sequence: "Tab"
-              count: 6
-          - type: key_sequence
-            data: "Return"
+            data: "ctrl+shift+a Tab Tab Tab Tab Tab Tab Return"
 
 global_macros:
   - name: "Type hello world"

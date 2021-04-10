@@ -307,7 +307,8 @@ data:
 
 - `sequence`: Required. A string representing the key combination. Key symbols are those from X Keysyms. A list may be
   found in the X11 source code file for [keysymdef.h](https://code.woboq.org/kde/include/X11/keysymdef.h.html).
-  The symbols to use are the `XK_`-prefixed ones, without that prefix.
+  The symbols to use are the `XK_`-prefixed ones, without that prefix. To use multiple key sequences in a row, you can
+  space-separate them like `"ctrl+shift+t Tab Tab Return"`
 - `count`: Optional, defaults to 1. How many times to repeat entering this sequence.
 - `delay`: Optional, defaults to 100. How many microseconds to wait between key presses. 
 - `delay_ms`: Optional, shorthand for `delay` for larger values. How many milliseconds to wait between key presses.
