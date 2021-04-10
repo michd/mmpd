@@ -87,7 +87,7 @@ pub (crate) fn build_event_matcher(raw_event_matcher: &RCHash) -> Result<EventMa
 
 #[cfg(test)]
 mod tests {
-    use crate::config::raw_config::{RCHash, k, RawConfig};
+    use crate::config::raw_config::{RCHash, k, RawConfig, RCHashBuilder};
     use crate::config::versions::version1::event_matchers::build_event_matcher;
     use crate::macros::event_matching::{EventMatcher, MatcherType};
     use crate::macros::event_matching::midi::MidiEventMatcher;
@@ -157,17 +157,19 @@ mod tests {
 
     #[test]
     fn builds_an_event_matcher_with_preconditions() {
-        let mut data_hash = RCHash::new();
-        data_hash.insert(k("message_type"), k("note_on"));
+        let data_hash = RCHashBuilder::new()
+            .insert(k("message_type"), k("note_on"))
+            .build();
 
-        let mut hash = RCHash::new();
-        hash.insert(k("type"), k("midi"));
-        hash.insert(k("data"), RawConfig::Hash(data_hash));
-        hash.insert(k("required_preconditions"), RawConfig::Array(vec![
-            RawConfig::Hash(RCHash::new()),
-            RawConfig::Hash(RCHash::new()),
-            RawConfig::Hash(RCHash::new()),
-        ]));
+        let hash = RCHashBuilder::new()
+            .insert(k("type"), k("midi"))
+            .insert(k("data"), RawConfig::Hash(data_hash))
+            .insert(k("required_preconditions"), RawConfig::Array(vec![
+                RawConfig::Hash(RCHashBuilder::new().insert(k("type"), k("other")).build()),
+                RawConfig::Hash(RCHashBuilder::new().insert(k("type"), k("other")).build()),
+                RawConfig::Hash(RCHashBuilder::new().insert(k("type"), k("other")).build()),
+            ]))
+            .build();
 
         let matcher = build_event_matcher(&hash)
             .ok().unwrap();
