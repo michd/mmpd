@@ -2,6 +2,7 @@ mod key_sequence;
 mod enter_text;
 mod shell;
 mod wait;
+mod control;
 
 use crate::config::raw_config::{RCHash, AccessHelpers, k};
 use crate::macros::actions::Action;
@@ -10,6 +11,7 @@ use key_sequence::build_action_key_sequence;
 use enter_text::build_action_enter_text;
 use shell::build_action_shell;
 use wait::build_action_wait;
+use crate::config::versions::version1::actions::control::build_action_control;
 
 /// Constructs an `Action` from a `raw_action` `RCHash`.
 ///
@@ -46,6 +48,7 @@ pub fn build_action(raw_action: &RCHash) -> Result<Action, ConfigError> {
     const ENTER_TEXT_TYPE: &str = "enter_text";
     const SHELL_TYPE: &str = "shell";
     const WAIT_TYPE: &str = "wait";
+    const CONTROL_TYPE: &str = "control";
 
     let data_hash = raw_action.get(&k(DATA_FIELD));
 
@@ -60,6 +63,7 @@ pub fn build_action(raw_action: &RCHash) -> Result<Action, ConfigError> {
         ENTER_TEXT_TYPE => build_action_enter_text(data_hash)?,
         SHELL_TYPE => build_action_shell(data_hash)?,
         WAIT_TYPE => build_action_wait(data_hash)?,
+        CONTROL_TYPE => build_action_control(data_hash)?,
 
         _ => {
             return Err(ConfigError::InvalidConfig(
@@ -71,9 +75,9 @@ pub fn build_action(raw_action: &RCHash) -> Result<Action, ConfigError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::raw_config::{RCHash, k};
+    use crate::config::raw_config::{RCHash, k, RawConfig};
     use crate::config::versions::version1::actions::build_action;
-    use crate::macros::actions::Action;
+    use crate::macros::actions::{Action, ControlAction};
 
     #[test]
     fn returns_an_error_if_type_field_is_missing() {
@@ -143,6 +147,34 @@ mod tests {
                 args: None,
                 env_vars: None,
             }
+        );
+    }
+
+    #[test]
+    fn builds_a_wait_action() {
+        let mut hash = RCHash::new();
+        hash.insert(k("type"), k("wait"));
+        hash.insert(k("data"), RawConfig::Integer(20));
+
+        let action = build_action(&hash).ok().unwrap();
+
+        assert_eq!(
+            action,
+            Action::Wait { duration: 20 }
+        )
+    }
+
+    #[test]
+    fn builds_a_control_action() {
+        let mut hash = RCHash::new();
+        hash.insert(k("type"), k("control"));
+        hash.insert(k("data"), k("exit"));
+
+        let action = build_action(&hash).ok().unwrap();
+
+        assert_eq!(
+            action,
+            Action::Control(ControlAction::Exit)
         );
     }
 }
