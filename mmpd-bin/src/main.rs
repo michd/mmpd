@@ -28,6 +28,13 @@ fn main() {
             }
         }
 
-        None => task_main(Some(&cli_matches))
+        None =>  {
+            // task_main returns `true` to indicate it should restart itself
+            let mut should_run_main = true;
+
+            while should_run_main {
+                should_run_main = task_main(Some(&cli_matches));
+            }
+        }
     }
 }

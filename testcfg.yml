@@ -61,3 +61,57 @@ global_macros:
         data: "Precondition works!"
       - type: key_sequence
         data: "Return"
+
+  - name: "Exit mmpd"
+    matching_events:
+      - type: midi
+        data:
+          message_type: note_on
+          channel: 0
+          key: 41
+    required_preconditions:
+      - type: midi
+        data:
+          condition_type: control
+          channel: 0
+          control: 51
+          value: 127
+    actions:
+      - type: control
+        data: exit
+
+  - name: "Reload macros"
+    matching_events:
+      - type: midi
+        data:
+          message_type: note_on
+          channel: 0
+          key: 42
+    required_preconditions:
+      - type: midi
+        data:
+          condition_type: control
+          channel: 0
+          control: 51
+          value: 127
+    actions:
+      - type: control
+        data: reload_macros
+
+  - name: "Restart mmpd"
+    matching_events:
+      - type: midi
+        data:
+          message_type: note_on
+          channel: 0
+          key: 43
+    required_preconditions:
+      - type: midi
+        data:
+          condition_type: control
+          channel: 0
+          control: 51
+          value: 127
+    actions:
+      - type: control
+        data: restart

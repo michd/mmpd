@@ -11,7 +11,7 @@ use key_sequence::build_action_key_sequence;
 use enter_text::build_action_enter_text;
 use shell::build_action_shell;
 use wait::build_action_wait;
-use crate::config::versions::version1::actions::control::build_action_control;
+use control::build_action_control;
 
 /// Constructs an `Action` from a `raw_action` `RCHash`.
 ///
