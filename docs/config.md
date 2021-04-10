@@ -1,24 +1,52 @@
 # Configuration
 
-mmpd is configured with a single YAML file specifying events and conditions that need to happen in order to
-run specified actions.
+This document details the configuration file format for mmpd.
 
-At the top level, the file has two properties, and looks like this:
+mmpd is configured in YAML, which specifies scopes, macros, and in those macros event matchers, preconditions, and
+actions to be run.
+
+At the top level, the file looks as follows:
+
 ```yaml
 version: 1
-  
+
 scopes:
   - ...
 
 global_macros:
   - ...
+- 
 ```
-
 - `version`: Configuration file format version. Instructs the program what to expect. This is included from the
   beginning in case a future version introduced such a big overhaul that the configuration files would become
   incompatible. Including it means the program will always know what to expect, and prevents breaking changes.
 - `scopes`: List of application scopes, each with its own list of macros.
 - `global_macros`: List of macros, which can run regardless of which application is focused.
+
+## Contents
+- [Scopes](#scopes)
+  - [String matching](#string-matching)
+- [Macros](#macros)
+  - [Events](#events)
+    - [MIDI events](#midi-events)
+    - [Value ranging](#value-ranging)
+      - [MIDI](#midi)
+    - [Preconditions](#preconditions)
+      - [MIDI Preconditions](#midi-preconditions)
+    - [Actions](#actions)
+      - [key_sequence](#key_sequence)
+      - [enter_text](#enter_text)
+        - [Shortened version](#shortened-version)
+      - [shell](#shell)
+      - [wait](#wait)
+        - [Shortened version](#shortened-version-1)
+      - [control](#control)
+        - [Control Actions](#control-actions)
+      - [Variables (NOT IMPLEMENTED YET)](#variables-not-implemented-yet)
+        - [Available data](#available-data)
+- [Full example of a config file](#full-example-of-a-config-file)
+
+---
 
 ## Scopes
 
@@ -201,7 +229,6 @@ the program keeps track of.
 A precondition is structured as follows:
 
 ```yaml
-# Note this does not work yet, not implemented.
 type: midi
 invert: false
 data:
@@ -234,7 +261,6 @@ The program remembers:
 For example, a precondition that requires note 24 to be on on channel 1 looks as follows:
 
 ```yaml
-# Note: this does not work yet, not implemented
 type: midi
 data:
   condition_type: note_on,
@@ -245,7 +271,6 @@ data:
 A precondition that requires control 42's value to be 64 or greater on channel 2 looks as follows:
 
 ```yaml
-# Note: this does not work yet, not implemented
 type: midi
 data:
   condition_type: control,
@@ -276,10 +301,14 @@ Value ranging works the same way as it does for MIDI events, see **Value ranging
 
 ### Actions
 
-Actions describe what to do when an event and preconditions match one of the configured macros. They come in 3 forms at
-the moment, but this may be expanded on. An action can be a key sequence (combination of keys on the computer keyboard
-pressed), text to be typed, or an arbitrary shell command being run with configurable arguments and environment
-variables.
+Actions describe what to do when an event and preconditions match one of the configured macros. 
+Below all available actions and their arguments are described, but here's a list of them:
+
+- key_sequence
+- enter_text
+- shell
+- wait
+- control
 
 An action looks as follows:
 
@@ -290,7 +319,7 @@ data:
 ```
 
 - `type`: specifies which kind of action. Its value determines what data fields are required and how it is executed.
-  Must be one of `key_sequence`, `enter_text`, `shell`, or `wait` exactly.
+  Must be one of `key_sequence`, `enter_text`, `shell`, `wait`, or `control` exactly.
 - `data`: Object containing fields that differ based on `type`.
 
 #### key_sequence
@@ -416,6 +445,41 @@ data:
   duration: 2000
 ```
 
+#### control
+
+Control actions control the execution of mmpd itself. They must contain a control action in the data field. An example follows:
+
+```yaml
+type: control
+data:
+  action: exit
+```
+
+There is one field available in the `data` field:
+
+- `action`:  What action to take, described in Control Actions below.
+
+There is also a shorter form, here is an equivalent example:
+
+```yaml
+type: control
+data: exit
+```
+
+##### Control Actions
+
+The following control actions are available:
+
+- `reload_macros`: Reloads the config file from disk and uses the updated macros found in it from there on.
+  Does not change which MIDI device is listened to, and keeps any known state (such as keys held, control values)
+  intact. If the config file couldn't be successfully read or parsed, mmpd will mention the error, but will keep running
+  with data from the previously loaded valid configuration. If reloading is successful, but there are now no macros, it
+  will exit.
+- `restart`: Restarts mmpd with the same arguments that it was initially run with. It doesn't actually end the process,
+  but it does re-initialize everything, including the MIDI device, blank state, etc. If anything about this is
+  unsuccessful, mmpd will exit, just like it would if there are errors on a normal startup.
+- `exit`: Immediately stops mmpd altogether.
+
 ---
 
 #### Variables (NOT IMPLEMENTED YET)
@@ -441,7 +505,7 @@ known value of control 32 on midi channel 2: `%conditions.midi.channels[2].contr
 
 If you wish to use a literal `%` in a string, double it: `%%`.
 
-##### Available data:
+##### Available data
 
 - `event`: Any fields available from the event's `data` object. If it's a midi event, then they are all documented
   higher up.
@@ -494,7 +558,7 @@ global_macros:
         velocity:
           min: 64
           
-    required_preconditions: # Not yet implemented, won't work 
+    required_preconditions: 
       - type: midi
         data:
           condition_type: control
