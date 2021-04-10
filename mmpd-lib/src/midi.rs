@@ -1,5 +1,7 @@
 pub mod adapters;
 pub use adapters::get_adapter;
+use regex::Regex;
+use std::ops::Range;
 
 /// MidiMessage is a parsed MIDI message, structured to be easy to work with.
 /// It is parsed from 3 raw bytes of data.
@@ -119,8 +121,120 @@ fn parse_message(bytes: &[u8]) -> Option<MidiMessage> {
     }
 }
 
+/// Parses a string describing a note into MIDI note number(s)
+///
+/// key_str should be in the format "<note name>[accidental][octave]" where angle brackets denote
+/// required content, and square brackets optional content.
+///
+/// Note name is a letter in the range A-G (case-independent)
+/// accidental is either 'b' or '#' and is case sensitive
+/// octave is a single digit decimal number with or without `-` prefix
+///
+/// If no octave is specified, returns a `Vec` with all MIDI note numbers matching that note
+/// If an octave is specified and the resulting note number falls within the MIDI note number
+/// boundaries, a `Vec` with just that number is returned.
+///
+/// An empty `Vec` is returned in the following circumstances:
+/// - The format didn't match that what was described
+/// - The calculated note is out of range of valid MIDI notes
+///
+/// ## Examples
+/// ```
+/// use mmpd_lib::midi::parse_keys_from_str;
+///
+/// let parsed_note = parse_keys_from_str("C3");
+/// assert_eq!(parsed_note, vec![48]);
+///
+/// let parsed_note = parse_keys_from_str("F#4");
+/// assert_eq!(parsed_note, vec![66]);
+///
+/// let parsed_note = parse_keys_from_str("Gb4");
+/// assert_eq!(parsed_note, vec![66]);
+///
+/// let parsed_notes = parse_keys_from_str("C");
+/// assert_eq!(
+///     parsed_notes,
+///     vec![0, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120]
+/// )
+/// ```
+pub fn parse_keys_from_str(key_str: &str) -> Vec<u8> {
+    const NOTES_PER_OCTAVE: i16 = 12;
+    const VALID_NOTES: Range<i16> = 0..128;
+
+    // Breaking apart the regular expression:
+    // ^          - Start of input
+    // ([A-Ga-g]) - Note name capture group: single char that's in range A-G or a-g, required
+    // ([b#])?    - Accidental capture group: single char that's either 'b' or '#', optional
+    // (-?[0-9])? - Octave capture group: single digit 0-9, may be prefixed with '-', optional
+    // $          - End of input
+    let key_regex = Regex::new(
+        r"^(?P<note_name>[A-Ga-g])(?P<accidental>[b#])?(?P<octave>-?[0-9])?$"
+    ).unwrap();
+
+    let captures = key_regex.captures(key_str);
+    if captures.is_none() { return vec![]; }
+    let captures = captures.unwrap();
+
+    let note_name = captures.name("note_name");
+    if note_name.is_none() { return vec![]; }
+    let note_name = note_name.unwrap().as_str().to_uppercase();
+
+    let accidental = captures.name("accidental").map(|a| a.as_str());
+
+    let octave = captures.name("octave").map(|oct_match| {
+        // Unwrap should never fails, since regex ensures only valid numbers
+        oct_match.as_str().parse::<i16>().unwrap()
+    });
+
+    // base_note_num is the number of the note if the octave were 0.
+    // C-1 is MIDI note 0, so C# starts at 12.
+    let base_note_num = match note_name.as_str() {
+        "C" => 12,
+        "D" => 14,
+        "E" => 16,
+        "F" => 17,
+        "G" => 19,
+        "A" => 21,
+        "B" => 23,
+        _ => panic!("Invalid note name, which shouldn't be possible thanks to the regex")
+    };
+
+    // Add offset if an accidental was given
+    let base_note_num = base_note_num + match accidental {
+        Some(accidental) => match accidental {
+            "b" => -1,
+            "#" => 1,
+            _ => panic!("Invalid accidental character that shouldn't be possible thanks to regex")
+        }
+
+        None => 0
+    };
+
+    match octave {
+        Some(octave) => {
+            // If octave is specified, return only the actual note number, provided it's in range.
+            let actual_note = base_note_num + (NOTES_PER_OCTAVE * octave);
+            VALID_NOTES
+                .filter(|n| *n == actual_note)
+                .map(|n| n as u8)
+                .collect()
+        }
+
+        None =>  {
+            // If no octave is specified, return a vec of all the notes that match the base note
+            // and any accidental
+            let note_num_remainder = base_note_num % NOTES_PER_OCTAVE;
+
+            VALID_NOTES
+                .filter(|n| n % NOTES_PER_OCTAVE == note_num_remainder)
+                .map(|n| n as u8)
+                .collect()
+        }
+    }
+}
+
 #[cfg(test)]
-mod tests {
+mod parse_message_tests {
     use crate::midi::MidiMessage;
     use crate::midi::parse_message;
 
@@ -212,4 +326,86 @@ mod tests {
     }
 }
 
+#[cfg(test)]
+mod parse_key_from_str_tests {
+    use crate::midi::parse_keys_from_str;
 
+    #[test]
+    fn parses_without_accidentals() {
+        assert_eq!(parse_keys_from_str("C-1"), vec![0]);
+        assert_eq!(parse_keys_from_str("B-1"), vec![11]);
+        assert_eq!(parse_keys_from_str("D0"), vec![14]);
+        assert_eq!(parse_keys_from_str("E0"), vec![16]);
+        assert_eq!(parse_keys_from_str("F1"), vec![29]);
+        assert_eq!(parse_keys_from_str("G1"), vec![31]);
+        assert_eq!(parse_keys_from_str("A2"), vec![45]);
+        assert_eq!(parse_keys_from_str("B2"), vec![47]);
+        assert_eq!(parse_keys_from_str("C3"), vec![48]);
+        assert_eq!(parse_keys_from_str("B3"), vec![59]);
+        assert_eq!(parse_keys_from_str("F9"), vec![125]);
+        assert_eq!(parse_keys_from_str("G9"), vec![127]);
+    }
+
+    #[test]
+    fn parses_with_accidentals() {
+        assert_eq!(parse_keys_from_str("C#-1"), vec![1]);
+        assert_eq!(parse_keys_from_str("Db-1"), vec![1]);
+        assert_eq!(parse_keys_from_str("E#-1"), vec![5]);
+        assert_eq!(parse_keys_from_str("Fb-1"), vec![4]);
+        assert_eq!(parse_keys_from_str("G#0"), vec![20]);
+        assert_eq!(parse_keys_from_str("Ab0"), vec![20]);
+        assert_eq!(parse_keys_from_str("F#1"), vec![30]);
+        assert_eq!(parse_keys_from_str("Gb1"), vec![30]);
+        assert_eq!(parse_keys_from_str("F#9"), vec![126]);
+    }
+
+    #[test]
+    fn returns_nothing_when_resulting_note_is_not_in_midi_range() {
+        assert_eq!(parse_keys_from_str("A-2"), vec![]);
+        assert_eq!(parse_keys_from_str("G#-2"), vec![]);
+        assert_eq!(parse_keys_from_str("A9"), vec![]);
+        assert_eq!(parse_keys_from_str("A#9"), vec![]);
+        assert_eq!(parse_keys_from_str("Bb9"), vec![]);
+    }
+
+    #[test]
+    fn accepts_lowercase_note_names() {
+        assert_eq!(parse_keys_from_str("b3"), vec![59]);
+        assert_eq!(parse_keys_from_str("f#1"), vec![30]);
+    }
+
+    #[test]
+    fn returns_all_matching_notes_if_no_octave_given() {
+        assert_eq!(
+            parse_keys_from_str("C"),
+            vec![0, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120]
+        );
+
+        assert_eq!(
+            parse_keys_from_str("D"),
+            vec![2, 14, 26, 38, 50, 62, 74, 86, 98, 110, 122]
+        );
+
+        assert_eq!(
+            parse_keys_from_str("Eb"),
+            vec![3, 15, 27, 39, 51, 63, 75, 87, 99, 111, 123]
+        );
+
+        assert_eq!(
+            parse_keys_from_str("A"),
+            vec![9, 21, 33, 45, 57, 69, 81, 93, 105, 117]
+        );
+    }
+
+    #[test]
+    fn returns_nothing_when_format_is_invalid_or_unsupported() {
+        // compound accidentals
+        assert_eq!(parse_keys_from_str("F##3"), vec![]);
+        assert_eq!(parse_keys_from_str("Fbb2"), vec![]);
+        assert_eq!(parse_keys_from_str("A#b3"), vec![]);
+        assert_eq!(parse_keys_from_str("Ab#3"), vec![]);
+
+        // Gobbledygook
+        assert_eq!(parse_keys_from_str("NYERGH"), vec![]);
+    }
+}
