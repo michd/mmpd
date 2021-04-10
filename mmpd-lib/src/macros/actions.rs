@@ -1,6 +1,7 @@
 use crate::keyboard_control::{self, KeyboardControlAdapter};
 use crate::shell::{Shell, ShellImpl};
 use std::{thread, time};
+use regex::Regex;
 
 /// Action run in response to a MIDI event
 /// Any Action value can be run through ActionRunner::run.
@@ -116,11 +117,16 @@ impl ActionRunner {
     }
 
     fn run_key_sequence(&self, sequence: &str, count: usize, delay: Option<u32>) {
+        let separator = Regex::new(r"\s+").expect("Invalid space regex");
+        let sequences: Vec<&str> = separator.split(sequence).into_iter().collect();
+
         for _ in 0..count {
-            self.kb_adapter.send_keysequence(
-                sequence,
-                delay.unwrap_or(DELAY_BETWEEN_KEYS_US)
-            );
+            for seq in &sequences {
+                self.kb_adapter.send_keysequence(
+                    seq,
+                    delay.unwrap_or(DELAY_BETWEEN_KEYS_US)
+                );
+            }
         }
     }
 
@@ -226,6 +232,68 @@ mod tests {
 
         runner.run(&Action::KeySequence {
             sequence: "Tab".to_string(),
+            count: 3,
+            delay: None
+        });
+    }
+
+    #[test]
+    fn runs_space_separated_key_sequences() {
+        let mut mock_keyb_adapter = MockKeyboardControlAdapter::new();
+
+        mock_keyb_adapter.expect_send_keysequence()
+            .with(eq("ctrl+t"), eq(DELAY_BETWEEN_KEYS_US))
+            .times(1)
+            .return_const(());
+
+        mock_keyb_adapter.expect_send_keysequence()
+            .with(eq("Tab"), eq(DELAY_BETWEEN_KEYS_US))
+            .times(2)
+            .return_const(());
+
+        mock_keyb_adapter.expect_send_keysequence()
+            .with(eq("Return"), eq(DELAY_BETWEEN_KEYS_US))
+            .times(1)
+            .return_const(());
+
+        let runner = ActionRunnerBuilder::new()
+            .set_keyboard_adapter(Box::new(mock_keyb_adapter))
+            .into_runner();
+
+        runner.run(&Action::KeySequence {
+            // Should deal with arbitrary amounts of space characters in between sequences
+            sequence: "ctrl+t Tab   Tab  Return".to_string(),
+            count: 1,
+            delay: None
+        });
+    }
+
+    #[test]
+    fn runs_repeated_space_separated_key_sequences() {
+        let mut mock_keyb_adapter = MockKeyboardControlAdapter::new();
+
+        mock_keyb_adapter.expect_send_keysequence()
+            .with(eq("ctrl+t"), eq(DELAY_BETWEEN_KEYS_US))
+            .times(3)
+            .return_const(());
+
+        mock_keyb_adapter.expect_send_keysequence()
+            .with(eq("Tab"), eq(DELAY_BETWEEN_KEYS_US))
+            .times(6)
+            .return_const(());
+
+        mock_keyb_adapter.expect_send_keysequence()
+            .with(eq("Return"), eq(DELAY_BETWEEN_KEYS_US))
+            .times(3)
+            .return_const(());
+
+        let runner = ActionRunnerBuilder::new()
+            .set_keyboard_adapter(Box::new(mock_keyb_adapter))
+            .into_runner();
+
+        runner.run(&Action::KeySequence {
+            // Should deal with arbitrary amounts of space characters in between sequences
+            sequence: "ctrl+t Tab   Tab  Return".to_string(),
             count: 3,
             delay: None
         });
