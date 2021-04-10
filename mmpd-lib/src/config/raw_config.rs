@@ -150,3 +150,25 @@ impl RawConfig {
         }
     }
 }
+
+/// Helper to build a populated RCHash without having to create a local mutable variable
+#[cfg(test)]
+pub (crate) struct RCHashBuilder {
+    hash: RCHash
+}
+
+#[cfg(test)]
+impl RCHashBuilder {
+    pub fn new() -> Self {
+        RCHashBuilder { hash: RCHash::new() }
+    }
+
+    pub fn insert(mut self, key: RawConfig, value: RawConfig) -> Self {
+        self.hash.insert(key, value);
+        self
+    }
+
+    pub fn build(self) -> RCHash {
+        return self.hash;
+    }
+}
