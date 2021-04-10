@@ -83,7 +83,7 @@ fn get_default_config_file() -> Option<PathBuf> {
     )
 }
 
-fn get_config_file(cli_matches: Option<&ArgMatches>) -> Option<PathBuf> {
+pub (crate) fn get_config_file(cli_matches: Option<&ArgMatches>) -> Option<PathBuf> {
     const CONFIG_PARAM: &str = "config";
 
     let cli_config =
@@ -111,6 +111,13 @@ fn get_config_file(cli_matches: Option<&ArgMatches>) -> Option<PathBuf> {
 pub (crate) fn get_config(cli_matches: Option<&ArgMatches>) -> Option<(Config, String)> {
     // Get configuration file
     let config_file = get_config_file(cli_matches)?;
+    let config_file_copy = config_file.to_path_buf();
+    let config_file_name = config_file_copy.to_str().unwrap_or("[none]");
+
+    return Some((read_config(config_file)?, config_file_name.to_string()));
+}
+
+pub (crate) fn read_config(config_file: PathBuf) -> Option<Config> {
     let config_file_name = config_file.to_str().unwrap_or("[none]");
 
     // Read config file to text
@@ -139,7 +146,7 @@ pub (crate) fn get_config(cli_matches: Option<&ArgMatches>) -> Option<(Config, S
 
     // Process into Config object
     match intermediate_config.process() {
-        Ok(config) => Some((config, config_file_name.to_string())),
+        Ok(config) => Some(config),
 
         Err(e) => {
             eprintln!("Error: unable to parse config file {}", config_file_name);

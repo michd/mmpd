@@ -39,8 +39,8 @@ including some future plans.
 
 ## To do:
 
-- Add some action enum types that allow control of the program (like exiting it, reloading config)
 - Investigate portability to non-linux platforms
+- See [Issues](https://github.com/michd/mmpd/issues)
 
 ## Dependencies
 
