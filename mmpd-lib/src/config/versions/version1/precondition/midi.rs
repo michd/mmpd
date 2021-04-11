@@ -9,7 +9,7 @@ use crate::config::versions::version1::primitive_matchers::{build_number_matcher
 /// ```yaml
 /// condition_type: note_on
 /// channel: (number matcher)
-/// key: (number matcher)
+/// key: (number matcher | musical note string)
 /// ```
 ///
 /// This is just one example; there are different valid properties, depending on the value of
@@ -32,6 +32,10 @@ use crate::config::versions::version1::primitive_matchers::{build_number_matcher
 /// - `pitch_bend` - Position of the pitch bender, from "pitch_bend_change" messages
 ///     - `channel` - Which MIDI channel the pitch bend setting is on (0-15)
 ///     - `value` - What the last known pitch bend value is (0-16383)
+///
+/// For `note_on`'s `key` field, you can specify a string describing a note, e.g.: "D#2", "A2", Bb1".
+/// You can also leave out the octave number, to create a number matcher matching that note on every
+/// octave, e.g.: "D#", "A", "Bb".
 ///
 /// ## Errors
 /// The function returns `ConfigError` in any of the following conditions:

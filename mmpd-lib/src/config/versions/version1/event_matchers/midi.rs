@@ -9,7 +9,7 @@ use crate::macros::event_matching::midi::MidiEventMatcher;
 /// ```yaml
 /// message_type: note_on
 /// channel: (number matcher)
-/// key: (number matcher)
+/// key: (number matcher | musical note string)
 /// velocity: (number matcher)
 /// ```
 ///
@@ -45,6 +45,11 @@ use crate::macros::event_matching::midi::MidiEventMatcher;
 /// - `pitch_bend_change` - Position of the pitch bender changes
 ///     - `channel`
 ///     - `value` - New pitch bend position (0-16383)
+///
+/// For `note_on`, `note_off`, and `poly_aftertouch`'s `key` field, you can specify a string
+/// describing a note, e.g.: "D#2", "A2", Bb1".
+/// You can also leave out the octave number, to create a number matcher matching that note on every
+/// octave, e.g.: "D#", "A", "Bb".
 ///
 /// ## Errors
 /// The function returns `ConfigError` in any of the following conditions:
