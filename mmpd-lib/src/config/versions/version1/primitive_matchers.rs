@@ -1,5 +1,5 @@
 use crate::config::raw_config::{RCHash, RawConfig, AccessHelpers};
-use crate::match_checker::{StringMatcher, NumberMatcher};
+use crate::match_checker::{StringMatcher, NumberMatcher, NumMatch};
 use crate::config::ConfigError;
 use regex::Regex;
 use crate::midi;
@@ -42,7 +42,7 @@ use crate::midi;
 ///
 /// The function will return `ConfigError` if the field found is "regex", but the value specified
 /// fails to parse as a regular expression pattern.
-pub fn build_string_matcher(
+pub (crate) fn build_string_matcher(
     raw_matcher: Option<&RCHash>
 ) -> Result<Option<StringMatcher>, ConfigError> {
     if let None = raw_matcher { return Ok(None); }
@@ -119,7 +119,7 @@ pub fn build_string_matcher(
 ///
 /// All other cases of invalid data types and what have you return None rather
 /// than an error.
-pub fn build_number_matcher(matcher: Option<&RawConfig>) -> Result<Option<NumberMatcher>, ConfigError> {
+pub (crate) fn build_number_matcher(matcher: Option<&RawConfig>) -> Result<NumMatch, ConfigError> {
     const MIN_FIELD: &str = "min";
     const MAX_FIELD: &str = "max";
 
@@ -210,7 +210,7 @@ pub fn build_number_matcher(matcher: Option<&RawConfig>) -> Result<Option<Number
     }
 }
 
-pub fn build_number_matcher_from_musical_note(key_str: &str) -> Result<NumberMatcher, ConfigError> {
+pub (crate) fn build_number_matcher_from_musical_note(key_str: &str) -> Result<NumberMatcher, ConfigError> {
     let midi_notes = midi::parse_keys_from_str(key_str);
 
     if midi_notes.is_empty() {
@@ -234,6 +234,15 @@ pub fn build_number_matcher_from_musical_note(key_str: &str) -> Result<NumberMat
                 .collect()
         )
     })
+}
+
+pub (crate) fn build_musical_key_matcher(matcher: Option<&RawConfig>) -> Result<NumMatch, ConfigError> {
+    // Only do something different than regular number matcher if the matcher is for a string
+    if let Some(RawConfig::String(str_key)) = matcher {
+        return Ok(Some(build_number_matcher_from_musical_note(str_key.as_str())?));
+    }
+
+    return build_number_matcher(matcher);
 }
 
 #[cfg(test)]
@@ -480,8 +489,9 @@ mod number_matcher_tests {
 
 #[cfg(test)]
 mod musical_note_number_matcher_tests {
-    use crate::config::versions::version1::primitive_matchers::build_number_matcher_from_musical_note;
+    use crate::config::versions::version1::primitive_matchers::{build_number_matcher_from_musical_note, build_musical_key_matcher};
     use crate::match_checker::NumberMatcher;
+    use crate::config::raw_config::RawConfig;
 
     #[test]
     fn returns_error_on_invalid_key() {
@@ -525,5 +535,39 @@ mod musical_note_number_matcher_tests {
                 NumberMatcher::Val(123)
             ])
         );
+    }
+
+    #[test]
+    fn builds_key_matcher_from_string_rawconfig() {
+        let raw_matcher = RawConfig::String("C3".to_string());
+
+        let matcher = build_musical_key_matcher(Some(&raw_matcher))
+            .ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            Some(NumberMatcher::Val(48))
+        );
+    }
+
+    #[test]
+    fn builds_regular_number_matcher_from_int_rawconfig() {
+        let raw_matcher = RawConfig::Integer(7);
+
+        let matcher = build_musical_key_matcher(Some(&raw_matcher))
+            .ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            Some(NumberMatcher::Val(7))
+        );
+    }
+
+    #[test]
+    fn returns_none_for_none_matcher() {
+        let matcher = build_musical_key_matcher(None)
+            .ok().unwrap();
+
+        assert_eq!(matcher, None)
     }
 }
