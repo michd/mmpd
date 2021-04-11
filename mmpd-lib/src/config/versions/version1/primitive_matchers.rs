@@ -2,6 +2,7 @@ use crate::config::raw_config::{RCHash, RawConfig, AccessHelpers};
 use crate::match_checker::{StringMatcher, NumberMatcher};
 use crate::config::ConfigError;
 use regex::Regex;
+use crate::midi;
 
 /// For a given `raw_matcher` `RCHash`, constructs a `StringMatcher`, a type that can match against
 /// a string in several different ways.
@@ -207,6 +208,32 @@ pub fn build_number_matcher(matcher: Option<&RawConfig>) -> Result<Option<Number
     } else {
         Ok(None)
     }
+}
+
+pub fn build_number_matcher_from_musical_note(key_str: &str) -> Result<NumberMatcher, ConfigError> {
+    let midi_notes = midi::parse_keys_from_str(key_str);
+
+    if midi_notes.is_empty() {
+        return Err(ConfigError::InvalidConfig(format!(
+            "The key string '{}' matches no valid MIDI note number(s)",
+            key_str
+        )));
+    }
+
+    Ok(if midi_notes.len() == 1 {
+        NumberMatcher::Val(
+            *midi_notes.first().unwrap() as u32
+        )
+    } else {
+        NumberMatcher::List(
+            midi_notes
+                .iter()
+                .map(|n| {
+                    NumberMatcher::Val(*n as u32)
+                })
+                .collect()
+        )
+    })
 }
 
 #[cfg(test)]
@@ -448,5 +475,55 @@ mod number_matcher_tests {
                 ])
             ])
         )
+    }
+}
+
+#[cfg(test)]
+mod musical_note_number_matcher_tests {
+    use crate::config::versions::version1::primitive_matchers::build_number_matcher_from_musical_note;
+    use crate::match_checker::NumberMatcher;
+
+    #[test]
+    fn returns_error_on_invalid_key() {
+        let key_str = "NYERGH";
+
+        let matcher = build_number_matcher_from_musical_note(key_str);
+
+        assert!(matcher.is_err());
+    }
+
+    #[test]
+    fn builds_val_number_matcher_if_one_note_is_returned() {
+        let key_str = "C3";
+
+        let matcher = build_number_matcher_from_musical_note(key_str)
+            .ok().unwrap();
+
+        assert_eq!(matcher, NumberMatcher::Val(48));
+    }
+
+    #[test]
+    fn builds_list_number_matcher_if_multiple_notes_are_returned() {
+        let key_str = "Eb";
+
+        let matcher = build_number_matcher_from_musical_note(key_str)
+            .ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            NumberMatcher::List(vec![
+                NumberMatcher::Val(3),
+                NumberMatcher::Val(15),
+                NumberMatcher::Val(27),
+                NumberMatcher::Val(39),
+                NumberMatcher::Val(51),
+                NumberMatcher::Val(63),
+                NumberMatcher::Val(75),
+                NumberMatcher::Val(87),
+                NumberMatcher::Val(99),
+                NumberMatcher::Val(111),
+                NumberMatcher::Val(123)
+            ])
+        );
     }
 }
