@@ -1,7 +1,7 @@
 mod midi_state;
 
 use crate::macros::Scope;
-use crate::focus::adapters::FocusAdapter;
+use crate::focus::FocusAdapter;
 use crate::match_checker::MatchChecker;
 use crate::macros::preconditions::{Precondition, PreconditionType};
 

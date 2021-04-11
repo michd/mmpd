@@ -6,12 +6,16 @@ edition = "2018"
 
 [dependencies]
 midir = "^0.7.0"
-libxdo-sys = "^0.11"
-x11 = { version = "2.18.2", features = ["xlib"] }
-libxdo = "^0.6"
 regex = "1"
 yaml-rust = "0.4"
 linked-hash-map = "0.5.4"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+x11 = { version = "2.18.2", features = ["xlib"] }
+libxdo-sys = "^0.11"
+libxdo = "^0.6"
+
+# TODO: Windows OS dependencies, Mac OS dependencies
 
 [dev-dependencies]
 mockall = "0.9.1"

@@ -2,10 +2,14 @@
 mod xdo_sys;
 mod x11_sys;
 
-use crate::focus::adapters::FocusAdapter;
+use crate::focus::FocusAdapter;
 use crate::focus::FocusedWindow;
-use crate::focus::adapters::x11::xdo_sys::XdoSys;
-use crate::focus::adapters::x11::x11_sys::X11Sys;
+use crate::focus::x11::xdo_sys::XdoSys;
+use crate::focus::x11::x11_sys::X11Sys;
+
+pub fn get_adapter() -> Option<Box<impl FocusAdapter>> {
+    X11::new().map(|x11| Box::new(x11))
+}
 
 /// Blank struct to act as a handle for the trait.
 pub struct X11 {

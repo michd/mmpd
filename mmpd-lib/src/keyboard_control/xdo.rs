@@ -1,7 +1,11 @@
 extern crate libxdo;
 
-use crate::keyboard_control::adapters::KeyboardControlAdapter;
+use crate::keyboard_control::KeyboardControlAdapter;
 use libxdo::XDo;
+
+pub fn get_adapter() -> Option<Box<impl KeyboardControlAdapter>> {
+    Xdo::new().map(|xdo| Box::new(xdo))
+}
 
 // Wrapper struct for the libxdo instance, used to access the KeyboardControlAdapter trait methods
 pub struct Xdo {
