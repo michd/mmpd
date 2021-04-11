@@ -26,7 +26,7 @@ global_macros:
         data:
           message_type: note_on
           channel: 0
-          key: 60
+          key: C
           velocity:
             min: 63
     actions:
@@ -68,7 +68,7 @@ global_macros:
         data:
           message_type: note_on
           channel: 0
-          key: 41
+          key: F2
     required_preconditions:
       - type: midi
         data:
@@ -86,7 +86,7 @@ global_macros:
         data:
           message_type: note_on
           channel: 0
-          key: 42
+          key: F#2
     required_preconditions:
       - type: midi
         data:
@@ -104,7 +104,7 @@ global_macros:
         data:
           message_type: note_on
           channel: 0
-          key: 43
+          key: G2
     required_preconditions:
       - type: midi
         data:

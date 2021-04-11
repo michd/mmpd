@@ -1,7 +1,7 @@
 use crate::macros::preconditions::midi::MidiPrecondition;
 use crate::config::raw_config::{RCHash, AccessHelpers, k};
 use crate::config::ConfigError;
-use crate::config::versions::version1::primitive_matchers::build_number_matcher;
+use crate::config::versions::version1::primitive_matchers::{build_number_matcher, build_musical_key_matcher};
 
 /// Constructs a `MidiPrecondition` from a `data` `RCHash`.
 ///
@@ -9,7 +9,7 @@ use crate::config::versions::version1::primitive_matchers::build_number_matcher;
 /// ```yaml
 /// condition_type: note_on
 /// channel: (number matcher)
-/// key: (number matcher)
+/// key: (number matcher | musical note string)
 /// ```
 ///
 /// This is just one example; there are different valid properties, depending on the value of
@@ -32,6 +32,10 @@ use crate::config::versions::version1::primitive_matchers::build_number_matcher;
 /// - `pitch_bend` - Position of the pitch bender, from "pitch_bend_change" messages
 ///     - `channel` - Which MIDI channel the pitch bend setting is on (0-15)
 ///     - `value` - What the last known pitch bend value is (0-16383)
+///
+/// For `note_on`'s `key` field, you can specify a string describing a note, e.g.: "D#2", "A2", Bb1".
+/// You can also leave out the octave number, to create a number matcher matching that note on every
+/// octave, e.g.: "D#", "A", "Bb".
 ///
 /// ## Errors
 /// The function returns `ConfigError` in any of the following conditions:
@@ -73,7 +77,7 @@ pub fn build_midi_precondition(
     Ok(match condition_type {
         NOTE_ON_CONDITION => MidiPrecondition::NoteOn {
             channel_match,
-            key_match: build_number_matcher(data.get(&k(KEY_FIELD)))?
+            key_match: build_musical_key_matcher(data.get(&k(KEY_FIELD)))?
         },
 
         CONTROL_CONDITION => MidiPrecondition::Control {
@@ -105,7 +109,7 @@ pub fn build_midi_precondition(
 
 #[cfg(test)]
 mod tests {
-    use crate::config::raw_config::{RCHash, k, RawConfig};
+    use crate::config::raw_config::{RCHash, k, RawConfig, RCHashBuilder};
     use crate::config::versions::version1::precondition::midi::build_midi_precondition;
     use crate::macros::preconditions::midi::MidiPrecondition;
     use crate::match_checker::NumberMatcher;
@@ -142,6 +146,23 @@ mod tests {
                 key_match: None
             }
         );
+
+        // With string key matcher
+        let hash = RCHashBuilder::new()
+            .insert(k("condition_type"), k("note_on"))
+            .insert(k("key"), k("C3"))
+            .build();
+
+        let condition = build_midi_precondition(Some(&hash))
+            .ok().unwrap();
+
+        assert_eq!(
+            condition,
+            MidiPrecondition::NoteOn {
+                channel_match: None,
+                key_match: Some(NumberMatcher::Val(48))
+            }
+        )
     }
 
     #[test]

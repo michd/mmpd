@@ -31,6 +31,7 @@ global_macros:
     - [MIDI events](#midi-events)
     - [Value ranging](#value-ranging)
       - [MIDI](#midi)
+    - [Musical note matching](#musical-note-matching)
     - [Preconditions](#preconditions)
       - [MIDI Preconditions](#midi-preconditions)
     - [Actions](#actions)
@@ -151,7 +152,8 @@ key: 32,
     
 - `channel`: Optional. Which MIDI channel the event happens on. This is 0-based, so available channels are 0-15.
   See **value ranging** for how to specify matching values.
-- `key`: Optional. Which key number is relevant to the event. See **value ranging**.
+- `key`: Optional. Which key number is relevant to the event. See [Value ranging](#value-ranging), and
+  [Musical note matching](#musical-note-matching).
 - `velocity`: Optional. How fast a key was pressed down or released. See **value ranging**.
 
 The available properties depend on the value of `message_type`. Here is a comprehensive list:
@@ -220,6 +222,34 @@ key:
     max: 44
 ```
 will match keys 12, 14, and all the keys from 32 to 44 inclusive.
+
+#### Musical note matching
+
+For places where you're matching `key` field in a MIDI event matcher or precondition, you can use a string to match
+against a note name for convenience.
+
+Per example, with the usual syntax, you can match a note_on event for the key C3 as follows:
+
+```yaml
+message_type: note_on
+key: 48
+```
+
+Instead of counting or looking up note numbers, you can specify it this way, which is equivalent.
+
+```yaml
+message_type: note_on
+key: C3
+```
+
+Accidentals for flat (`b`) and sharp (`#`) are supported.
+
+There are two ways you can use the string notation:
+
+- Matching a single key: requires the note name like "C", "D#" + the octave number.
+- Matching a key in all octaves: requires the note name like "C", "D#", without an octave number; this will create a
+  number matcher matching all the keys in the MIDI note range matching the note name.
+  (This option was suggested by [@loansindi](https://github.com/loansindi).)
 
 ### Preconditions
 
@@ -297,7 +327,8 @@ list:
   - `channel` 0-15 inclusive
   - `value` 0-16383 inclusive
   
-Value ranging works the same way as it does for MIDI events, see **Value ranging** above.
+Value ranging works the same way as it does for MIDI events, see **Value ranging** above. For `note_on`'s `key`
+matcher, also see [Musical note matching](#musical-note-matching) for useful shorthands.
 
 ### Actions
 
