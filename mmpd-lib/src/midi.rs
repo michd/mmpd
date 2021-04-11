@@ -162,13 +162,13 @@ pub fn parse_keys_from_str(key_str: &str) -> Vec<u8> {
     const VALID_NOTES: Range<i16> = 0..128;
 
     // Breaking apart the regular expression:
-    // ^          - Start of input
-    // ([A-Ga-g]) - Note name capture group: single char that's in range A-G or a-g, required
-    // ([b#])?    - Accidental capture group: single char that's either 'b' or '#', optional
-    // (-?[0-9])? - Octave capture group: single digit 0-9, may be prefixed with '-', optional
-    // $          - End of input
+    // ^              - Start of input
+    // ([A-Ga-g])     - Note name capture group: single char that's in range A-G or a-g, required
+    // ([b#]{1,100})? - Accidental capture group: single char that's either 'b' or '#', optional
+    // (-?[0-9])?     - Octave capture group: single digit 0-9, may be prefixed with '-', optional
+    // $              - End of input
     let key_regex = Regex::new(
-        r"^(?P<note_name>[A-Ga-g])(?P<accidental>[b#])?(?P<octave>-?[0-9])?$"
+        r"^(?P<note_name>[A-Ga-g])(?P<accidentals>[b#]{1,100})?(?P<octave>-?[0-9])?$"
     ).unwrap();
 
     let captures = key_regex.captures(key_str);
@@ -179,7 +179,7 @@ pub fn parse_keys_from_str(key_str: &str) -> Vec<u8> {
     if note_name.is_none() { return vec![]; }
     let note_name = note_name.unwrap().as_str().to_uppercase();
 
-    let accidental = captures.name("accidental").map(|a| a.as_str());
+    let accidentals = captures.name("accidentals").map(|a| a.as_str());
 
     let octave = captures.name("octave").map(|oct_match| {
         // Unwrap should never fails, since regex ensures only valid numbers
@@ -188,7 +188,7 @@ pub fn parse_keys_from_str(key_str: &str) -> Vec<u8> {
 
     // base_note_num is the number of the note if the octave were 0.
     // C-1 is MIDI note 0, so C# starts at 12.
-    let base_note_num = match note_name.as_str() {
+    let base_note_num: i16 = match note_name.as_str() {
         "C" => 12,
         "D" => 14,
         "E" => 16,
@@ -200,11 +200,12 @@ pub fn parse_keys_from_str(key_str: &str) -> Vec<u8> {
     };
 
     // Add offset if an accidental was given
-    let base_note_num = base_note_num + match accidental {
-        Some(accidental) => match accidental {
-            "b" => -1,
-            "#" => 1,
-            _ => panic!("Invalid accidental character that shouldn't be possible thanks to regex")
+    let base_note_num = base_note_num + match accidentals {
+        Some(accidentals) => {
+            let flat_cnt = accidentals.chars().filter(|c| *c == 'b').count() as isize;
+            let sharp_cnt = accidentals.chars().filter(|c| *c == '#').count() as isize;
+
+            (sharp_cnt - flat_cnt) as i16
         }
 
         None => 0
@@ -398,13 +399,13 @@ mod parse_key_from_str_tests {
     }
 
     #[test]
-    fn returns_nothing_when_format_is_invalid_or_unsupported() {
-        // compound accidentals
-        assert_eq!(parse_keys_from_str("F##3"), vec![]);
-        assert_eq!(parse_keys_from_str("Fbb2"), vec![]);
-        assert_eq!(parse_keys_from_str("A#b3"), vec![]);
-        assert_eq!(parse_keys_from_str("Ab#3"), vec![]);
+    fn processes_compound_accidentals() {
+        assert_eq!(parse_keys_from_str("F##3"), vec![55]); // Equivalent to G3
+        assert_eq!(parse_keys_from_str("Gb#b#3"), vec![55]); // Accidentals cancel out
+    }
 
+    #[test]
+    fn returns_nothing_when_format_is_invalid_or_unsupported() {
         // Gobbledygook
         assert_eq!(parse_keys_from_str("NYERGH"), vec![]);
     }
