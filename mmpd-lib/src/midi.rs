@@ -123,7 +123,7 @@ fn parse_message(bytes: &[u8]) -> Option<MidiMessage> {
 
 /// Parses a string describing a note into MIDI note number(s)
 ///
-/// key_str should be in the format "<note name>[accidental][octave]" where angle brackets denote
+/// key_str should be in the format "<note name>[accidentals][octave]" where angle brackets denote
 /// required content, and square brackets optional content.
 ///
 /// Note name is a letter in the range A-G (case-independent)
@@ -164,7 +164,7 @@ pub fn parse_keys_from_str(key_str: &str) -> Vec<u8> {
     // Breaking apart the regular expression:
     // ^              - Start of input
     // ([A-Ga-g])     - Note name capture group: single char that's in range A-G or a-g, required
-    // ([b#]{1,100})? - Accidental capture group: single char that's either 'b' or '#', optional
+    // ([b#]{1,100})? - Accidental capture group: one or more chars that are either 'b' or '#', optional
     // (-?[0-9])?     - Octave capture group: single digit 0-9, may be prefixed with '-', optional
     // $              - End of input
     let key_regex = Regex::new(
@@ -187,7 +187,7 @@ pub fn parse_keys_from_str(key_str: &str) -> Vec<u8> {
     });
 
     // base_note_num is the number of the note if the octave were 0.
-    // C-1 is MIDI note 0, so C# starts at 12.
+    // C-1 is MIDI note 0, so C0 starts at 12.
     let base_note_num: i16 = match note_name.as_str() {
         "C" => 12,
         "D" => 14,
@@ -199,7 +199,7 @@ pub fn parse_keys_from_str(key_str: &str) -> Vec<u8> {
         _ => panic!("Invalid note name, which shouldn't be possible thanks to the regex")
     };
 
-    // Add offset if an accidental was given
+    // Add offset if any accidentals were specified
     let base_note_num = base_note_num + match accidentals {
         Some(accidentals) => {
             let flat_cnt = accidentals.chars().filter(|c| *c == 'b').count() as isize;
