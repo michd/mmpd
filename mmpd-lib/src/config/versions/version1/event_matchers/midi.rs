@@ -1,6 +1,6 @@
 use crate::config::raw_config::{RCHash, AccessHelpers, k};
 use crate::config::ConfigError;
-use crate::config::versions::version1::primitive_matchers::build_number_matcher;
+use crate::config::versions::version1::primitive_matchers::{build_number_matcher, build_musical_key_matcher};
 use crate::macros::event_matching::midi::MidiEventMatcher;
 
 /// Constructs a `MidiEventMatcher` from a `data` `RCHash`.
@@ -96,7 +96,7 @@ pub fn build_midi_event_matcher(
 
             MidiEventMatcher::NoteOn {
                 channel_match,
-                key_match: build_number_matcher(raw_key_matcher)?,
+                key_match: build_musical_key_matcher(raw_key_matcher)?,
                 velocity_match: build_number_matcher(raw_velocity_matcher)?
             }
         }
@@ -107,7 +107,7 @@ pub fn build_midi_event_matcher(
 
             MidiEventMatcher::NoteOff {
                 channel_match,
-                key_match: build_number_matcher(raw_key_matcher)?,
+                key_match: build_musical_key_matcher(raw_key_matcher)?,
                 velocity_match: build_number_matcher(raw_velocity_matcher)?
             }
         }
@@ -118,7 +118,7 @@ pub fn build_midi_event_matcher(
 
             MidiEventMatcher::PolyAftertouch {
                 channel_match,
-                key_match: build_number_matcher(raw_key_matcher)?,
+                key_match: build_musical_key_matcher(raw_key_matcher)?,
                 value_match: build_number_matcher(raw_value_matcher)?
             }
         }
@@ -175,7 +175,7 @@ pub fn build_midi_event_matcher(
 #[cfg(test)]
 mod tests {
     use crate::config::versions::version1::event_matchers::midi::build_midi_event_matcher;
-    use crate::config::raw_config::{RCHash, k, RawConfig};
+    use crate::config::raw_config::{RCHash, k, RawConfig, RCHashBuilder};
     use crate::macros::event_matching::midi::MidiEventMatcher;
     use crate::match_checker::NumberMatcher;
 
@@ -246,6 +246,24 @@ mod tests {
                 velocity_match: None
             }
         );
+
+        // With string key matcher
+        let hash = RCHashBuilder::new()
+            .insert(k("message_type"), k("note_on"))
+            .insert(k("key"), k("C3"))
+            .build();
+
+        let matcher = build_midi_event_matcher(Some(&hash))
+            .ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            MidiEventMatcher::NoteOn {
+                channel_match: None,
+                key_match: Some(NumberMatcher::Val(48)),
+                velocity_match: None
+            }
+        );
     }
 
     #[test]
@@ -281,6 +299,25 @@ mod tests {
                 velocity_match: None
             }
         );
+
+        // With string key matcher
+        let hash = RCHashBuilder::new()
+            .insert(k("message_type"), k("note_off"))
+            .insert(k("key"), k("C3"))
+            .build();
+
+        let matcher = build_midi_event_matcher(Some(&hash))
+            .ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            MidiEventMatcher::NoteOff {
+                channel_match: None,
+                key_match: Some(NumberMatcher::Val(48)),
+                velocity_match: None
+            }
+        );
+
     }
 
     #[test]
@@ -313,6 +350,24 @@ mod tests {
             MidiEventMatcher::PolyAftertouch {
                 channel_match: None,
                 key_match: None,
+                value_match: None
+            }
+        );
+
+        // With string key matcher
+        let hash = RCHashBuilder::new()
+            .insert(k("message_type"), k("poly_aftertouch"))
+            .insert(k("key"), k("C3"))
+            .build();
+
+        let matcher = build_midi_event_matcher(Some(&hash))
+            .ok().unwrap();
+
+        assert_eq!(
+            matcher,
+            MidiEventMatcher::PolyAftertouch {
+                channel_match: None,
+                key_match: Some(NumberMatcher::Val(48)),
                 value_match: None
             }
         );
