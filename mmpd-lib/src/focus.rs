@@ -4,6 +4,12 @@ mod x11;
 #[cfg(target_os = "linux")]
 pub use self::x11::get_adapter;
 
+#[cfg(target_os = "windows")]
+mod windows;
+
+#[cfg(target_os = "windows")]
+pub use windows::get_adapter;
+
 /// Container struct for window info
 #[derive(Debug)]
 pub struct FocusedWindow {
