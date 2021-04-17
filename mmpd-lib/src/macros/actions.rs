@@ -93,7 +93,14 @@ impl Action {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 const DELAY_BETWEEN_KEYS_US: u32 = 100;
+
+// On windows, it seems the minimum delay is much less granular, meaning even the 100us delay
+// makes key sequences and enter_text very slow.
+#[cfg(target_os = "windows")]
+const DELAY_BETWEEN_KEYS_US: u32 = 0;
+
 
 /// Struct to give access to running Actions
 pub struct ActionRunner {
