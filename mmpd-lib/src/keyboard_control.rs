@@ -4,6 +4,12 @@ mod xdo;
 #[cfg(target_os = "linux")]
 pub use xdo::get_adapter;
 
+#[cfg(target_os = "windows")]
+mod windows;
+
+#[cfg(target_os = "windows")]
+pub use windows::get_adapter;
+
 use std::fmt::{self, Display, Formatter};
 
 /// Adapters implementing this trait can send key sequences and text as if they were entered on
