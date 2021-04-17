@@ -2,5 +2,6 @@
 
 members = [
     "mmpd-lib",
-    "mmpd-bin"
+    "windows_bindings",
+    "mmpd-bin",
 ]

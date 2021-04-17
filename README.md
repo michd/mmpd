@@ -39,12 +39,16 @@ including some future plans.
 
 ## To do:
 
-- Investigate portability to non-linux platforms
 - See [Issues](https://github.com/michd/mmpd/issues)
+- Rewrite this readme with full guide on building / installing etc
 
 ## Dependencies
 
+### Linux
 - [xdotool](https://www.semicomplete.com/projects/xdotool/) (get it through your system's package manager)
   
   xdotool is needed for its library (libxdo).
 
+### Windows
+
+Nothing specific I think, but see [Installing `rustup` on Windows](https://doc.rust-lang.org/stable/book/ch01-01-installation.html#installing-rustup-on-windows).
