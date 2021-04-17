@@ -146,7 +146,10 @@ impl ActionRunner {
 
         for _ in 0..count {
             for seq in &sequences {
-                self.kb_adapter.send_keysequence(
+                // Note: swallowing potential error
+                // TODO: expose these errors all the way up
+                // TODO: stop running sequence as soon as an error is encountered
+                let _ = self.kb_adapter.send_keysequence(
                     seq,
                     delay.unwrap_or(DELAY_BETWEEN_KEYS_US)
                 );
@@ -156,7 +159,10 @@ impl ActionRunner {
 
     fn run_enter_text(&self, text: &str, count: usize, delay: Option<u32>) {
         for _ in 0..count {
-            self.kb_adapter.send_text(
+            // Note: swallowing potential error
+            // TODO: expose errors all the way up
+            // TODO: stop entering text as soon as an error is encountered
+            let _ = self.kb_adapter.send_text(
                 text,
                 delay.unwrap_or(DELAY_BETWEEN_KEYS_US)
             );
