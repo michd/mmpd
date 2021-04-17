@@ -4,8 +4,8 @@ version = "0.1.0"
 authors = ["Michael Duerinckx <mich@michd.me>"]
 edition = "2018"
 
-[dependencies]
+[target.'cfg(target_os = "windows")'.dependencies]
 windows = "0.8.0"
 
-[build-dependencies]
+[target.'cfg(target_os = "windows")'.build-dependencies]
 windows = "0.8.0"
