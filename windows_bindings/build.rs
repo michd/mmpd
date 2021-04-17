@@ -8,7 +8,14 @@ fn main() {
             keybd_eventFlags,
         },
 
+        Windows::Win32::SystemServices::{
+            PWSTR
+        },
+
         Windows::Win32::WindowsAndMessaging::{
+            GetForegroundWindow,
+            GetWindowTextW,
+            GetClassNameW,
             VK_ACCEPT,
             VK_ADD,
             VK_APPS,
