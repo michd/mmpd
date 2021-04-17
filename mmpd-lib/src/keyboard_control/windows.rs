@@ -1,4 +1,5 @@
 use crate::keyboard_control::{KeyboardControlAdapter, KeyboardResult, KeyboardControlError};
+
 use windows_bindings::Windows::Win32::KeyboardAndMouseInput::{
     SendInput,
     INPUT,
@@ -8,20 +9,23 @@ use windows_bindings::Windows::Win32::KeyboardAndMouseInput::{
     keybd_eventFlags
 };
 
+// Normally I don't use asterisk imports, but this imports a whole lot of VK_ constants and it'd
+// be obnoxious to list them all here again
 use windows_bindings::Windows::Win32::WindowsAndMessaging::*;
+
 use std::os::windows::ffi::OsStrExt;
 use std::{mem, thread};
 use core::time;
-use std::ffi::{OsStr};
+use std::ffi::OsStr;
 
 pub fn get_adapter() -> Option<Box<impl KeyboardControlAdapter>> {
    Windows::new().map(|windows| Box::new(windows))
 }
 
-pub struct Windows {}
+struct Windows {}
 
 impl Windows {
-    pub fn new() -> Option<impl KeyboardControlAdapter> {
+    fn new() -> Option<impl KeyboardControlAdapter> {
         Some(Windows {})
     }
 }
@@ -50,7 +54,7 @@ fn send_inputs(inputs: Vec<INPUT>, delay_microsecs: u32) {
 
         unsafe {
             // see
-            // https://docs.microsoft.com/en-gb/windows/win32/api/winuser/nf-winuser-sendinput?redirectedfrom=MSDN
+            // https://docs.microsoft.com/en-gb/windows/win32/api/winuser/nf-winuser-sendinput
             SendInput(
                 1, // length of input_arr to iterate over
                 input_arr.as_mut_ptr(), // Pointer to input array
@@ -62,7 +66,7 @@ fn send_inputs(inputs: Vec<INPUT>, delay_microsecs: u32) {
     }
 }
 
-/// Splits a keysequence (like "ctrl+shift+t" up into its components like "ctrl", "shift", "t",
+/// Splits a key sequence (like "ctrl+shift+t" up into its components like "ctrl", "shift", "t",
 /// converts them to virtual key codes that windows understands, and forms a list of INPUT
 /// structs that presses them all down in sequence, then releases them all in opposite order
 fn build_keysequence_inputs(str_sequence: &str) -> Result<Vec<INPUT>, KeyboardControlError> {

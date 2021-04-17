@@ -9,13 +9,13 @@ pub fn get_adapter() -> Option<Box<impl KeyboardControlAdapter>> {
 }
 
 // Wrapper struct for the libxdo instance, used to access the KeyboardControlAdapter trait methods
-pub struct Xdo {
+struct Xdo {
     xdo: XDo
 }
 
 impl Xdo {
     /// Creates a new instance of the Xdo adapter, wrapping libxdo's.
-    pub fn new() -> Option<impl KeyboardControlAdapter> {
+    fn new() -> Option<impl KeyboardControlAdapter> {
         let xdo = XDo::new(None).ok()?;
 
         Some(Xdo {
