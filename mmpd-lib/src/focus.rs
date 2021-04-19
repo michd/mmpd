@@ -10,6 +10,12 @@ mod windows;
 #[cfg(target_os = "windows")]
 pub use windows::get_adapter;
 
+#[cfg(target_os = "macos")]
+mod mac_os;
+
+#[cfg(target_os = "macos")]
+pub use mac_os::get_adapter;
+
 /// Container struct for window info
 #[derive(Debug)]
 pub struct FocusedWindow {
