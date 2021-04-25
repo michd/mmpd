@@ -1,4 +1,5 @@
 use crate::focus::{FocusAdapter, FocusedWindow};
+use std::process::Command;
 
 pub fn get_adapter() -> Option<Box<impl FocusAdapter>> {
     MacOs::new().map(|mac_os| Box::new(mac_os))
@@ -14,7 +15,41 @@ impl MacOs {
 
 impl FocusAdapter for MacOs {
     fn get_focused_window(&self) -> Option<FocusedWindow> {
-        println!("Todo: get_focused_window on MacOs");
-        None
+        // Expected output data from this applescript (mac_os/get_window_info.scpt)
+        // 3 lines of text:
+        //   - application class ("displayed name")
+        //   - application name ("name")
+        //   - window title ("AXTitle" attribute value of window with AXMain is true)
+        // The first two populate the window_class vec, while the last one populates window_name
+        //
+        // Note: ideally, we'd use an actual SDK to retrieve this info, but it appears no rust
+        // binding for the APIs needed is available yet, and I didn't want to have the scope of
+        // "adding Mac OS support" spiral out into creating bindings for AppKit's NSWorkspace
+        // See:
+        // https://developer.apple.com/documentation/appkit/nsworkspace/1532097-frontmostapplication
+        // Further details of how to actually figure out the window title etc from there to be
+        // figured out by whomever ends up implementing it the "right" way.
+        let script_output = Command::new("osascript")
+            .arg("-e")
+            .arg(include_str!("mac_os/get_window_info.scpt"))
+            .output()
+            .ok()?;
+
+        let output_raw = String::from_utf8(script_output.stdout).ok()?;
+        let output_lines: Vec<&str> = output_raw.trim().split("\n").collect();
+
+        // If number of lines doesn't match what expect we can't reliably retrieve correct info
+        if output_lines.len() != 3 {
+            return None;
+        }
+
+        Some(FocusedWindow {
+            // Index access won't panic since we checked length above
+            window_class: vec![
+                output_lines[0].to_string(),
+                output_lines[1].to_string()
+            ],
+            window_name: output_lines[2].to_string()
+        })
     }
 }
