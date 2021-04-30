@@ -5,10 +5,12 @@ behavior to keys and controllers, while differentiating based on the application
 
 Essentially, think of it as an additional keyboard that does custom things based on what application you're working with.
 
-You can of course also set up actions that work regardless of the application.
+You can also set up "global" actions that work regardless of the application.
 
-Initially written for use on Linux distributions using the X windowing system, it is structured with
-the intent to allow implementing it for other platforms, though this has not been done yet.
+Initially written for use on Linux distributions using the X windowing system, it was structured to easily allow
+adding implementations for other platforms. At the moment, Linux with X windowing system, Windows, and Mac OS are
+supported. The Mac OS implementation is quite slow since it works through shell calls to `osascript`. It's an area that
+could do with improvement, perhaps through rust bindings to the CoreGraphics library.
 
 ## Current status: tentatively ready for some use
 
@@ -33,6 +35,7 @@ What's implemented so far:
   - list-midi-devices subcommand
   - monitor subcommand (to view incoming events without running macros)
   - (no subcommand) listening for events and running configured macros in response
+- Support for Linux (using X server), Windows, and Mac OS
 
 There's documentation on the configuration format in [docs/config.md](https://github.com/michd/midi-macro-pad/blob/main/docs/config.md)
 including some future plans.
@@ -52,3 +55,7 @@ including some future plans.
 ### Windows
 
 Nothing specific I think, but see [Installing `rustup` on Windows](https://doc.rust-lang.org/stable/book/ch01-01-installation.html#installing-rustup-on-windows).
+
+### Mac OS
+
+Nothing specific. Mac OS-specific parts interface with the system through AppleScript.

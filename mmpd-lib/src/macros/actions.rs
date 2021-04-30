@@ -9,22 +9,28 @@ use regex::Regex;
 pub enum Action {
     /// Sends a key sequence 0 or more times
     /// Use this one for key combinations.
-    /// The str argument specifies the key sequence, according to X Keysym notation.
-    /// Per example "ctrl+shift+t": emulates pressing the "Ctrl", "Shift" and "t" keys at
-    /// the same time.
-    /// The number is how many times this key sequence should be entered.
     KeySequence {
+        /// Key sequence, on Linux and Windows according to X Keysym notation, on Mac OS not quite
+        /// but close. (Uses "command", "control", "option" instead, otherwise largely the same)
         sequence: String,
+
+        /// How many times this sequence should be entered
         count: usize,
+
+        /// Delay time in microseconds between keystrokes, not applicable on Mac OS
         delay: Option<u32>
     },
 
     /// Enters text as if you typed it on a keyboard
     /// Use this one for text exactly as in the string provided.
-    /// The number is how many times this same string should be entered.
     EnterText {
+        /// Text to be entered as if typed on keyboard
         text: String,
+
+        /// How many times this text should be repeated
         count: usize,
+
+        /// Delay time in microseconds between keystrokes, not applicable on Mac OS
         delay: Option<u32>
     },
 
