@@ -21,6 +21,8 @@ pub use mac_os::get_adapter;
 pub struct FocusedWindow {
     pub window_class: Vec<String>,
     pub window_name: String,
+    pub executable_path: Option<String>,
+    pub executable_basename: Option<String>,
 }
 
 /// Adapters implementing this trait can be asked to provided data on the currently focused window.

@@ -33,7 +33,9 @@ impl FocusAdapter for Windows {
         Some(
             FocusedWindow {
                 window_class: get_window_class(foreground_handle)?,
-                window_name: get_window_name(foreground_handle)?
+                window_name: get_window_name(foreground_handle)?,
+                executable_path: None, // TODO
+                executable_basename: None
             }
         )
     }

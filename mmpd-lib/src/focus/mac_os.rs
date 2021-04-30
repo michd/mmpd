@@ -49,7 +49,10 @@ impl FocusAdapter for MacOs {
                 output_lines[0].to_string(),
                 output_lines[1].to_string()
             ],
-            window_name: output_lines[2].to_string()
+            window_name: output_lines[2].to_string(),
+
+            executable_path: None, // TODO
+            executable_basename: None,
         })
     }
 }

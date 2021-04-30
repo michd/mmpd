@@ -28,7 +28,9 @@ impl X11Sys {
 
         Some(FocusedWindow {
             window_class,
-            window_name: window_name.first()?.to_string()
+            window_name: window_name.first()?.to_string(),
+            executable_path: None, // TODO
+            executable_basename: None, // TODO
         })
     }
 
