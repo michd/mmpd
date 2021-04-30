@@ -77,7 +77,7 @@ fn build_sequence_script(str_sequence: &str) -> Result<String, KeyboardControlEr
     }
 
     // Split on `+` and trim each found key
-    let keys= str_sequence.split('+')
+    let keys = str_sequence.split('+')
         .into_iter()
         .map(|key| key.trim().to_string())
         .collect::<Vec<String>>();
