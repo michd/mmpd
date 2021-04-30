@@ -10,6 +10,17 @@ mod windows;
 #[cfg(target_os = "windows")]
 pub use windows::get_adapter;
 
+#[cfg(target_os = "macos")]
+mod mac_os;
+
+#[cfg(target_os = "macos")]
+pub use mac_os::get_adapter;
+
+#[cfg(test)]
+use mockall::*;
+#[cfg(test)]
+use mockall::predicate::*;
+
 use std::fmt::{self, Display, Formatter};
 
 /// Adapters implementing this trait can send key sequences and text as if they were entered on
@@ -32,6 +43,7 @@ pub trait KeyboardControlAdapter {
 pub type KeyboardResult = Result<(), KeyboardControlError>;
 
 /// Errors that may occur when trying to use a KeyboardControlAdapter
+#[derive(Debug)]
 pub enum KeyboardControlError {
     /// An unknown/unsupported/invalid key was passed to `send_keysequence`
     InvalidKey(

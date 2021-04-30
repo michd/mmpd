@@ -9,22 +9,28 @@ use regex::Regex;
 pub enum Action {
     /// Sends a key sequence 0 or more times
     /// Use this one for key combinations.
-    /// The str argument specifies the key sequence, according to X Keysym notation.
-    /// Per example "ctrl+shift+t": emulates pressing the "Ctrl", "Shift" and "t" keys at
-    /// the same time.
-    /// The number is how many times this key sequence should be entered.
     KeySequence {
+        /// Key sequence, on Linux and Windows according to X Keysym notation, on Mac OS not quite
+        /// but close. (Uses "command", "control", "option" instead, otherwise largely the same)
         sequence: String,
+
+        /// How many times this sequence should be entered
         count: usize,
+
+        /// Delay time in microseconds between keystrokes, not applicable on Mac OS
         delay: Option<u32>
     },
 
     /// Enters text as if you typed it on a keyboard
     /// Use this one for text exactly as in the string provided.
-    /// The number is how many times this same string should be entered.
     EnterText {
+        /// Text to be entered as if typed on keyboard
         text: String,
+
+        /// How many times this text should be repeated
         count: usize,
+
+        /// Delay time in microseconds between keystrokes, not applicable on Mac OS
         delay: Option<u32>
     },
 
@@ -199,7 +205,7 @@ impl ActionRunner {
 #[cfg(test)]
 mod tests {
     use crate::macros::actions::{ActionRunner, Action, DELAY_BETWEEN_KEYS_US, ControlAction};
-    use crate::keyboard_control::adapters::MockKeyboardControlAdapter;
+    use crate::keyboard_control::MockKeyboardControlAdapter;
     use crate::shell::{Shell, MockShell};
     use mockall::predicate::eq;
     use crate::keyboard_control::KeyboardControlAdapter;
@@ -245,7 +251,7 @@ mod tests {
         mock_keyb_adapter.expect_send_keysequence()
             .with(eq("ctrl+alt+delete"), eq(DELAY_BETWEEN_KEYS_US))
             .times(1)
-            .return_const(());
+            .returning(|_, _| Ok(()));
 
         let runner = ActionRunnerBuilder::new()
             .set_keyboard_adapter(Box::new(mock_keyb_adapter))
@@ -263,7 +269,7 @@ mod tests {
         mock_keyb_adapter.expect_send_keysequence()
             .with(eq("Tab"), eq(DELAY_BETWEEN_KEYS_US))
             .times(3)
-            .return_const(());
+            .returning(|_, _| Ok(()));
 
         let runner = ActionRunnerBuilder::new()
             .set_keyboard_adapter(Box::new(mock_keyb_adapter))
@@ -285,17 +291,17 @@ mod tests {
         mock_keyb_adapter.expect_send_keysequence()
             .with(eq("ctrl+t"), eq(DELAY_BETWEEN_KEYS_US))
             .times(1)
-            .return_const(());
+            .returning(|_, _| Ok(()));
 
         mock_keyb_adapter.expect_send_keysequence()
             .with(eq("Tab"), eq(DELAY_BETWEEN_KEYS_US))
             .times(2)
-            .return_const(());
+            .returning(|_, _| Ok(()));
 
         mock_keyb_adapter.expect_send_keysequence()
             .with(eq("Return"), eq(DELAY_BETWEEN_KEYS_US))
             .times(1)
-            .return_const(());
+            .returning(|_, _| Ok(()));
 
         let runner = ActionRunnerBuilder::new()
             .set_keyboard_adapter(Box::new(mock_keyb_adapter))
@@ -318,17 +324,17 @@ mod tests {
         mock_keyb_adapter.expect_send_keysequence()
             .with(eq("ctrl+t"), eq(DELAY_BETWEEN_KEYS_US))
             .times(3)
-            .return_const(());
+            .returning(|_, _| Ok(()));
 
         mock_keyb_adapter.expect_send_keysequence()
             .with(eq("Tab"), eq(DELAY_BETWEEN_KEYS_US))
             .times(6)
-            .return_const(());
+            .returning(|_, _| Ok(()));
 
         mock_keyb_adapter.expect_send_keysequence()
             .with(eq("Return"), eq(DELAY_BETWEEN_KEYS_US))
             .times(3)
-            .return_const(());
+            .returning(|_, _| Ok(()));
 
         let runner = ActionRunnerBuilder::new()
             .set_keyboard_adapter(Box::new(mock_keyb_adapter))
@@ -351,7 +357,7 @@ mod tests {
         mock_keyb_adapter.expect_send_text()
             .with(eq("hello"), eq(DELAY_BETWEEN_KEYS_US))
             .times(1)
-            .return_const(());
+            .returning(|_, _| Ok(()));
 
         let runner = ActionRunnerBuilder::new()
             .set_keyboard_adapter(Box::new(mock_keyb_adapter))
@@ -369,7 +375,7 @@ mod tests {
         mock_keyb_adapter.expect_send_text()
             .with(eq("hello"), eq(DELAY_BETWEEN_KEYS_US))
             .times(3)
-            .return_const(());
+            .returning(|_, _| Ok(()));
 
         let runner = ActionRunnerBuilder::new()
             .set_keyboard_adapter(Box::new(mock_keyb_adapter))

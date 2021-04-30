@@ -365,14 +365,24 @@ data:
   delay: 1500
 ```
 
-- `sequence`: Required. A string representing the key combination. Key symbols are those from X Keysyms. A list may be
-  found in the X11 source code file for [keysymdef.h](https://code.woboq.org/kde/include/X11/keysymdef.h.html).
-  The symbols to use are the `XK_`-prefixed ones, without that prefix. To use multiple key sequences in a row, you can
+- `sequence`: Required. A string representing the key combination.
+  
+  - On Linux and Windows, key symbols are those from X Keysyms. A list may be found in the X11 source code file for
+  [keysymdef.h](https://code.woboq.org/kde/include/X11/keysymdef.h.html). The symbols to use are the `XK_`-prefixed ones,
+  without that prefix.
+  - On Mac OS, some different key names like "control", "option", "command" are available. The same syntax with `+`
+    still applies, but the key names differ. This is a good reference for the names of keys: 
+    [Complete list of AppleScript keycodes](https://eastmanreference.com/complete-list-of-applescript-key-codes).
+    As an example, these are valid: `"command+t"`, `"command+shift+option+a"`
+    
+  To use multiple key sequences in a row, you can
   space-separate them like `"ctrl+shift+t Tab Tab Return"`
 - `count`: Optional, defaults to 1. How many times to repeat entering this sequence.
-- `delay`: Optional, defaults to 100. How many microseconds to wait between key presses. 
+- `delay`: Optional, defaults to 100. How many microseconds to wait between key presses.
+  On Mac OS, this is not used.
 - `delay_ms`: Optional, shorthand for `delay` for larger values. How many milliseconds to wait between key presses.
-  If both `delay` and `delay_ms` have valid values, the value for `delay` is used.
+  If both `delay` and `delay_ms` have valid values, the value for `delay` is used. On Mac OS, neither `delay` nor
+  `delay_ms` are used.
 
 #### enter_text
 
@@ -389,9 +399,10 @@ data:
 
 - `text`: Required. String containing text exactly as you'd like it "typed" into the focused application.
 - `count`: Optional, defaults to 1. How many times to repeat entering this sequence.
-- `delay`: Optional, defaults to 100. How many microseconds to wait between key presses.
+- `delay`: Optional, defaults to 100. How many microseconds to wait between key presses. On Mac OS, this is not used.
 - `delay_ms`: Optional, shorthand for `delay` for larger values. How many milliseconds to wait between key presses.
-  If both `delay` and `delay_ms` have valid values, the value for `delay` is used.
+  If both `delay` and `delay_ms` have valid values, the value for `delay` is used. On Mac OS, neither `delay` nor
+  `delay_ms` are used.
 
 ##### Shortened version
 
