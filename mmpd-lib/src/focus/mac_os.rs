@@ -1,5 +1,6 @@
 use crate::focus::{FocusAdapter, FocusedWindow};
 use std::process::Command;
+use std::path::Path;
 
 pub fn get_adapter() -> Option<Box<impl FocusAdapter>> {
     MacOs::new().map(|mac_os| Box::new(mac_os))
@@ -39,8 +40,18 @@ impl FocusAdapter for MacOs {
         let output_lines: Vec<&str> = output_raw.trim().split("\n").collect();
 
         // If number of lines doesn't match what expect we can't reliably retrieve correct info
-        if output_lines.len() != 3 {
+        if output_lines.len() != 4 {
             return None;
+        }
+
+        let executable_path = output_lines[3].to_string();
+        let exec_path = Path::new(executable_path.as_str());
+        let mut executable_basename: Option<String> = None;
+
+        if let Some(file_name) = exec_path.file_name() {
+            if let Some(file_name) = file_name.to_str() {
+                executable_basename = Some(file_name.to_string());
+            }
         }
 
         Some(FocusedWindow {
@@ -51,8 +62,8 @@ impl FocusAdapter for MacOs {
             ],
             window_name: output_lines[2].to_string(),
 
-            executable_path: None, // TODO
-            executable_basename: None,
+            executable_path: Some(executable_path),
+            executable_basename,
         })
     }
 }
