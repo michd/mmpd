@@ -4,17 +4,17 @@ midi_device:
   contains: "KeyStep"
 
 scopes:
-  - window_name:
-      ends_with: "Inkscape"
+  - executable_basename:
+      is: "inkscape"
 
     macros:
-      - name: "Inkscape align objects horizontally"
+      - name: "Inkscape align objects vertically"
         matching_events:
           - type: midi
             data:
               message_type: note_on
               channel: 0
-              key: 48
+              key: A2
         actions:
           - type: key_sequence
             data: "ctrl+shift+a Tab Tab Tab Tab Tab Tab Return"

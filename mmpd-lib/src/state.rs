@@ -56,33 +56,52 @@ impl State for StateImpl {
 
         let scope = scope.clone().unwrap();
 
-        if scope.window_name.is_none() && scope.window_class.is_none() {
-            return true
-        }
-
         let window = self.focus_adapter.get_focused_window();
 
-        return if let Some(window) = window {
-            if let Some(window_name) = &scope.window_name {
-                if !window_name.matches(&window.window_name.as_ref()) {
-                    return false
-                }
-            }
+        // If there is no focused window, but we have scope qualifiers, we cannot match
+        if window.is_none() {
+            return false
+        }
 
-            if let Some(window_class) = &scope.window_class {
-                for wcls in window.window_class {
-                    if window_class.matches(&wcls.as_ref()) {
-                        return true
-                    }
-                }
+        let window = window.unwrap();
 
+        if let Some(window_name) = &scope.window_name {
+            if !window_name.matches(&window.window_name.as_ref()) {
                 return false
             }
-
-            true
-        } else {
-            true
         }
+
+        if let Some(window_class) = &scope.window_class {
+            if !window.window_class.iter().any(|wc| window_class.matches(&wc.as_ref())) {
+                return false;
+            }
+        }
+
+        if let Some(executable_path) = &scope.executable_path {
+            if window.executable_path.is_none() {
+                return false;
+            }
+
+            let w_exec_path = window.executable_path.unwrap();
+
+            if !executable_path.matches(&w_exec_path.as_ref()) {
+                return false;
+            }
+        }
+
+        if let Some(executable_basename) = &scope.executable_basename {
+            if window.executable_basename.is_none() {
+                return false;
+            }
+
+            let w_exec_basename = window.executable_basename.unwrap();
+
+            if !executable_basename.matches(&w_exec_basename.as_ref()) {
+                return false;
+            }
+        }
+
+        true
     }
 
     fn matches_precondition(&self, precondition: &Precondition) -> bool {
@@ -99,3 +118,5 @@ impl State for StateImpl {
         }
     }
 }
+
+// TODO: tests for StateImpl

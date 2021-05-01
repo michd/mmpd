@@ -12,14 +12,36 @@ pub mod preconditions;
 pub struct Scope {
     pub window_class: Option<StringMatcher>,
     pub window_name: Option<StringMatcher>,
+    pub executable_path: Option<StringMatcher>,
+    pub executable_basename: Option<StringMatcher>
 }
 
 impl Scope {
     pub fn new<'a>(
         window_class: Option<StringMatcher>,
-        window_name: Option<StringMatcher>
+        window_name: Option<StringMatcher>,
+        executable_path: Option<StringMatcher>,
+        executable_basename: Option<StringMatcher>
     ) -> Scope {
-        Scope { window_class, window_name }
+        Scope {
+            window_class,
+            window_name,
+            executable_path,
+            executable_basename
+        }
+    }
+
+    /// Turns the instance into an option, as a convenience for checking whether _any_ of its
+    /// matchers are `Some`. Returns `None` if all contained matchers are `None`.
+    pub fn into_option(self) -> Option<Scope> {
+        if self.window_class.is_some() ||
+            self.window_name.is_some() ||
+            self.executable_path.is_some() ||
+            self.executable_basename.is_some() {
+            Some(self)
+        } else {
+            None
+        }
     }
 }
 

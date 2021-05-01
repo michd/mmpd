@@ -14,11 +14,16 @@ use crate::config::versions::version1::primitive_matchers::build_string_matcher;
 ///     # (string matcher)
 /// window_name:
 ///     # (string matcher)
+/// executable_path:
+///     # (string matcher)
+/// executable_basename:
+///     # (string matcher)
 /// macros:
 ///     # list of macros
 /// ```
-/// Both `window_class` and `window_name` are optional. If both are specified, then for the scope
-/// to match, the string matchers for both must matched the focused window's fields.
+/// `window_class`, `window_name`, `executable_path`, and `executable_basename` are optional.
+/// All the ones that are specified need to match the focused window's fields for the scope to
+/// match.
 ///
 /// The expected structure of string matcher is described by `build_string_matcher`.
 ///
@@ -30,6 +35,8 @@ use crate::config::versions::version1::primitive_matchers::build_string_matcher;
 pub (crate) fn build_scope(raw_scope: &RCHash) -> Result<Option<Scope>, ConfigError> {
     const WINDOW_CLASS_FIELD: &str = "window_class";
     const WINDOW_NAME_FIELD: &str = "window_name";
+    const EXECUTABLE_PATH_FIELD: &str = "executable_path";
+    const EXECUTABLE_BASENAME_FIELD: &str = "executable_basename";
 
     let window_class_matcher = build_string_matcher(
         raw_scope.get_hash(WINDOW_CLASS_FIELD)
@@ -39,33 +46,67 @@ pub (crate) fn build_scope(raw_scope: &RCHash) -> Result<Option<Scope>, ConfigEr
         raw_scope.get_hash(WINDOW_NAME_FIELD)
     )?;
 
-    Ok(if window_class_matcher.is_some() || window_name_matcher.is_some() {
-        Some(
-            Scope::new(window_class_matcher, window_name_matcher)
-        )
-    } else {
-        None
-    })
+    let executable_path_matcher = build_string_matcher(
+        raw_scope.get_hash(EXECUTABLE_PATH_FIELD)
+    )?;
+
+    let executable_basename_matcher = build_string_matcher(
+        raw_scope.get_hash(EXECUTABLE_BASENAME_FIELD)
+    )?;
+
+    Ok(
+        Scope::new(
+            window_class_matcher,
+            window_name_matcher,
+            executable_path_matcher,
+            executable_basename_matcher
+        ).into_option()
+    )
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::config::raw_config::{RCHash, k, RawConfig};
+    use crate::config::raw_config::{RCHash, k, RawConfig, RCHashBuilder};
     use crate::config::versions::version1::scope::build_scope;
     use crate::macros::Scope;
     use crate::match_checker::StringMatcher;
 
     #[test]
     fn builds_scope_out_of_matchers_hash() {
-        let mut window_class_hash = RCHash::new();
-        window_class_hash.insert(k("is"), k("class"));
-
-        let mut window_name_hash = RCHash::new();
-        window_name_hash.insert(k("is"), k("name"));
-
-        let mut input = RCHash::new();
-        input.insert(k("window_class"), RawConfig::Hash(window_class_hash));
-        input.insert(k("window_name"), RawConfig::Hash(window_name_hash));
+        let input = RCHashBuilder::new()
+            .insert(
+                k("window_class"),
+                RawConfig::Hash(
+                    RCHashBuilder::new()
+                        .insert(k("is"), k("class"))
+                        .build()
+                )
+            )
+            .insert(
+                k("window_name"),
+                RawConfig::Hash(
+                    RCHashBuilder::new()
+                        .insert(k("is"), k("name"))
+                        .build()
+                )
+            )
+            .insert(
+                k("executable_path"),
+                RawConfig::Hash(
+                    RCHashBuilder::new()
+                        .insert(k("is"), k("exec_path"))
+                        .build()
+                )
+            )
+            .insert(
+                k("executable_basename"),
+                RawConfig::Hash(
+                    RCHashBuilder::new()
+                        .insert(k("is"), k("exec_basename"))
+                        .build()
+                )
+            )
+            .build();
 
         let scope = build_scope(&input).ok().unwrap().unwrap();
 
@@ -73,7 +114,9 @@ mod tests {
             scope,
             Scope {
                 window_class: Some(StringMatcher::Is("class".to_string())),
-                window_name: Some(StringMatcher::Is("name".to_string()))
+                window_name: Some(StringMatcher::Is("name".to_string())),
+                executable_path: Some(StringMatcher::Is("exec_path".to_string())),
+                executable_basename: Some(StringMatcher::Is("exec_basename".to_string()))
             }
         );
     }
@@ -92,7 +135,9 @@ mod tests {
             scope,
             Scope {
                 window_class: Some(StringMatcher::Is("class".to_string())),
-                window_name: None
+                window_name: None,
+                executable_path: None,
+                executable_basename: None,
             }
         );
 
@@ -108,7 +153,9 @@ mod tests {
             scope,
             Scope {
                 window_class: None,
-                window_name: Some(StringMatcher::Is("name".to_string()))
+                window_name: Some(StringMatcher::Is("name".to_string())),
+                executable_path: None,
+                executable_basename: None,
             }
         );
     }
