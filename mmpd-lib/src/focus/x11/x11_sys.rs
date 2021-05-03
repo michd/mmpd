@@ -141,6 +141,10 @@ fn decode_strings(bytes: &[u8]) -> Vec<String> {
     loop {
         let slice_len = slice.len();
 
+        if slice_len == 0 {
+            break;
+        }
+
         // Find first position of 0 byte, falling back to 1 past the end of the slice,
         // if there aren't any 0 bytes.
         let nul_pos = slice.iter().position(|b| *b == 0).unwrap_or(slice_len);
@@ -164,4 +168,61 @@ fn decode_strings(bytes: &[u8]) -> Vec<String> {
     }
 
     strings
+}
+
+#[cfg(test)]
+mod test_decode_strings {
+    use crate::focus::x11::x11_sys::decode_strings;
+
+    #[test]
+    fn decodes_single_string() {
+        let bytes_vec = "Hello".to_string().into_bytes();
+        let decoded = decode_strings(bytes_vec.as_slice());
+
+        assert_eq!(
+            vec!["Hello".to_string()],
+            decoded
+        );
+    }
+
+    #[test]
+    fn decodes_two_nul_separated_strings() {
+        let mut bytes_vec: Vec<u8> = vec![];
+
+        bytes_vec.append(&mut "Hello".to_string().into_bytes());
+        bytes_vec.push(0);
+        bytes_vec.append(&mut "World".to_string().into_bytes());
+
+        let decoded = decode_strings(bytes_vec.as_slice());
+
+        assert_eq!(
+            vec!["Hello".to_string(), "World".to_string()],
+            decoded
+        );
+    }
+
+    #[test]
+    fn decodes_blank_string() {
+        let bytes_vec: Vec<u8> = "".to_string().into_bytes();
+
+        let decoded = decode_strings(bytes_vec.as_slice());
+
+        let expected: Vec<String> = vec![];
+
+        assert_eq!(
+            expected,
+            decoded
+        );
+    }
+
+    #[test]
+    fn decodes_single_space_string() {
+        let bytes_vec: Vec<u8> = " ".to_string().into_bytes();
+        let decoded = decode_strings(bytes_vec.as_slice());
+
+        assert_eq!(
+            vec![" "],
+            decoded
+        )
+    }
 }
