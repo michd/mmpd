@@ -2,7 +2,7 @@
 -- With thanks to this StackOverflow answer by Albert
 -- https://stackoverflow.com/a/5293758/1019228
 
-global frontApp, frontAppName, frontAppClass, windowTitle
+global frontApp, frontAppName, frontAppClass, windowTitle, executablePath
 set windowTitle to ""
 
 tell application "System Events"
@@ -12,6 +12,8 @@ tell application "System Events"
     -- be the values we populate window_class with
     set frontAppName to name of frontApp
     set frontAppClass to displayed name of frontApp
+    -- Get the absolute path of the application owning this window
+    set executablePath to POSIX path of (application file of frontApp)
 
     -- Get the window title
     tell process frontAppName
@@ -19,8 +21,7 @@ tell application "System Events"
             set windowTitle to value of attribute "AXTitle"
         end tell
     end tell
-
 end tell
 
--- Print app class, app name, and window title to STDOUT on their own lines
-copy frontAppClass & "\n" & frontAppName & "\n" & windowTitle to stdout
+-- Print app class, app name, window title, executable path to STDOUT on their own lines
+copy frontAppClass & "\n" & frontAppName & "\n" & windowTitle & "\n" & executablePath to stdout

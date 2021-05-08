@@ -10,13 +10,16 @@ fn main() {
         },
 
         Windows::Win32::SystemServices::{
-            PWSTR
+            PWSTR,
+            OpenProcess,
+            QueryFullProcessImageNameW,
         },
 
         Windows::Win32::WindowsAndMessaging::{
             GetForegroundWindow,
             GetWindowTextW,
             GetClassNameW,
+            GetWindowThreadProcessId,
             VK_ACCEPT,
             VK_ADD,
             VK_APPS,

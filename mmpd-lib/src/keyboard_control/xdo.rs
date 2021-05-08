@@ -2,7 +2,6 @@ extern crate libxdo;
 
 use crate::keyboard_control::{KeyboardControlAdapter, KeyboardResult, KeyboardControlError};
 use libxdo::XDo;
-use std::error::Error;
 
 pub fn get_adapter() -> Option<Box<impl KeyboardControlAdapter>> {
     Xdo::new().map(|xdo| Box::new(xdo))

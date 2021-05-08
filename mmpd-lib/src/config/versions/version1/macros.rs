@@ -404,7 +404,9 @@ mod tests {
 
                 scope: Some(Scope {
                     window_class: None,
-                    window_name: Some(StringMatcher::Is("match".to_string()))
+                    window_name: Some(StringMatcher::Is("match".to_string())),
+                    executable_path: None,
+                    executable_basename: None,
                 })
             }
         );
@@ -493,7 +495,9 @@ mod tests {
 
                     scope: Some(Scope {
                         window_class: None,
-                        window_name: Some(StringMatcher::Is("match".to_string()))
+                        window_name: Some(StringMatcher::Is("match".to_string())),
+                        executable_path: None,
+                        executable_basename: None,
                     })
                 },
 
@@ -520,7 +524,9 @@ mod tests {
 
                     scope: Some(Scope {
                         window_class: None,
-                        window_name: Some(StringMatcher::Is("match".to_string()))
+                        window_name: Some(StringMatcher::Is("match".to_string())),
+                        executable_path: None,
+                        executable_basename: None,
                     })
                 },
             ]

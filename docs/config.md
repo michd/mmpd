@@ -51,14 +51,19 @@ global_macros:
 
 ## Scopes
 
-A scope consists of a pattern to match a focused application window's title and/or window class, and a list of
-associated macros that only apply if a window matching the pattern is currently focused. A scope looks like this:
+A scope consists of a pattern to match a focused application window title, window class, executable path, or executable
+base filename, and a list of associated macros that only apply if a window matching the pattern is currently focused.
+A scope looks like this:
 
 ```yaml
 window_class:
   is: "exact text"
 window_name:
   contains: "partial text"
+executable_path:
+  regex: "^regular expression$"
+executable_basename:
+  starts_with: "something"
   
 macros:
   - ...
@@ -67,7 +72,12 @@ macros:
 - `window_class`: matches against a window class of the focused window. The matching object is documented below, see
   string matching.
 - `window_name`: matches against a window name of the focused window. Matching works the same.
+- `executable_path`: Full absolute path to the executable file responsible for the focused window
+- `executable_basename`: Like `executable_path`, but only the filename without the directory it is in, for convenience.
 - `macros`: List of macros that apply to this scope, documented in Macros.
+
+`window_class`, `window_name`, `executable_path`, and `executable_basename` are all "string matchers", which are
+described below.
 
 ### String matching
 
