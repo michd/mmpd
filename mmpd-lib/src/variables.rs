@@ -43,458 +43,470 @@ enum ParserState {
     End, // End of string reached
 }
 
-struct Parser {
-    var_str: String,
-    nodes: Vec<Token>,
-    current_name: String,
-    current_array_index_str: String,
+// Result of a function reading a number of characters
+struct ReadResult {
+    // If this function read name characters, they are in here
+    name: Option<String>,
+
+    // If this function resulted in finishing reading an entire token, this is the token kind
+    token_kind: Option<TokenKind>,
+
+    // The state of the parser after this function, instructing it what to read next
     state: ParserState,
+
+    // Number of characters this function has consumed
+    chars_read: usize
 }
 
-impl Parser {
-    fn new(var_str: &str) -> Parser {
-        Parser {
-            var_str: var_str.trim().to_string(),
-            nodes: vec![],
-            current_name: "".to_string(),
-            current_array_index_str: "".to_string(),
-            state: ParserState::Name
+fn parse(var_str: &str) -> Result<Vec<Token>, VariableError> {
+    if var_str.is_empty() {
+        return Err(VariableError::new("Empty variable notation string", 0));
+    }
+
+    let mut current_name: Option<String> = None;
+    let mut index: usize = 0;
+    let mut state = ParserState::Name;
+    let mut tokens: Vec<Token> = vec![];
+
+    loop {
+        let read_result = match state {
+            ParserState::Name => read_name_chars(var_str, index),
+            ParserState::Array => read_array_chars(var_str, index),
+            ParserState::FunctionCall => read_function_call_chars(var_str, index),
+            ParserState::AfterToken => read_after_token_chars(var_str, index),
+            ParserState::End => break
+        }.map_err(|e| {
+            // Adjust received error location by index known here
+            e.offset_location(index)
+        })?;
+
+        current_name = current_name.or(read_result.name);
+
+        // If there is a finished token to consume, build it and add it to the list
+        if let Some(token_kind) = read_result.token_kind {
+            if current_name.is_none() {
+                // Well that very much shouldn't happen.
+                panic!("Got a read_result with a token_kind while we have no current_name.");
+            }
+
+            tokens.push(Token {
+                name: current_name.unwrap(),
+                kind: token_kind
+            });
+
+            current_name = None;
+        }
+
+        state = read_result.state;
+        index += read_result.chars_read;
+
+        if index >=var_str.len() {
+            break;
         }
     }
 
-    fn parse(mut self) -> Result<Vec<Token>, VariableError> {
-        if self.var_str.is_empty() {
-            return Err(VariableError::new("Empty variable notation string", 0));
+    Ok(tokens)
+}
+
+fn read_name_chars(var_str: &str, index: usize) -> Result<ReadResult, VariableError> {
+    let mut name = "".to_string();
+
+    for (i, c) in var_str[index..].chars().enumerate() {
+        match c {
+            // Valid token name characters
+            'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => {
+                name.push_str(c.to_string().as_str())
+            }
+
+            '.' => {
+                return Ok(ReadResult {
+                    name: Some(name),
+                    token_kind: Some(TokenKind::Namespace),
+                    state: ParserState::Name,
+                    chars_read: i + 1
+                });
+            }
+
+            '[' => {
+                return Ok(ReadResult {
+                    name: Some(name),
+                    token_kind: None,
+                    state: ParserState::Array,
+                    chars_read: i + 1
+                });
+            },
+
+            '(' => {
+                return Ok(ReadResult {
+                    name: Some(name),
+                    token_kind: None,
+                    state: ParserState::FunctionCall,
+                    chars_read: i + 1
+                })
+            },
+
+            _ => {
+                return Err(VariableError::new(
+                    format!(
+                        "Invalid character '{} in variable notation:\n{}",
+                        c.to_string(),
+                        var_str
+                    ).as_str(),
+                    index + 1
+                ));
+            }
         }
-
-        let mut index: usize = 0;
-
-        loop {
-            let chars_read = match self.state {
-                ParserState::Name => self.read_name_chars(index),
-                ParserState::Array => self.read_array_chars(index),
-                ParserState::FunctionCall => self.read_function_call_chars(index),
-                ParserState::AfterToken => self.read_after_token_chars(index),
-                ParserState::End => break
-            }.map_err(|e| {
-                // Adjust received error location by index known here
-                e.offset_location(index)
-            })?;
-
-            index += chars_read;
-        }
-
-        Ok(self.nodes)
     }
 
-    fn read_name_chars(&mut self, index: usize) -> Result<usize, VariableError> {
-        for (i, c) in self.var_str[index..].chars().enumerate() {
-            match c {
-                // Valid token name characters
-                'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => {
-                    self.current_name.push_str(c.to_string().as_str())
-                }
+    if name.is_empty() {
+        Err(VariableError::new(
+            format!(
+                "Unexpected end of variable notation string; expecting a name. \
+                    Variable notation: \n{}",
+                var_str
+            ).as_str(),
+            index
+        ))
+    } else {
+        Ok(ReadResult {
+            name: Some(name),
+            token_kind: Some(TokenKind::Leaf),
+            state: ParserState::End,
+            chars_read: var_str.len() - index
+        })
+    }
+}
 
-                '.' => {
-                    self.nodes.push(
-                        Token { name: self.current_name.to_owned(), kind: TokenKind::Namespace }
-                    );
+fn read_array_chars(var_str: &str, index: usize) -> Result<ReadResult, VariableError> {
+    let mut arr_index_str = "".to_string();
 
-                    self.current_name = "".to_string();
-                    self.state = ParserState::Name;
+    for (i, c) in var_str[index..].chars().enumerate() {
+        match c {
+            '0'..='9' => {
+                arr_index_str.push_str(c.to_string().as_str());
+            }
 
-                    self.state = if index >= self.var_str.len() {
-                        ParserState::End
-                    } else {
-                        ParserState::Name
-                    };
-
-                    return Ok(i + 1);
-                }
-
-                '[' => {
-                    self.state = ParserState::Array;
-                    return Ok(i + 1);
-                },
-
-                '(' => {
-                    self.state = ParserState::FunctionCall;
-                    return Ok(i + 1);
-                },
-
-                _ => {
+            ']' => {
+                if arr_index_str.is_empty() {
                     return Err(VariableError::new(
                         format!(
-                            "Invalid character '{} in variable notation:\n{}",
-                            c.to_string(),
-                            self.var_str
+                            "Missing array index in variable notation:\n{}",
+                            var_str
                         ).as_str(),
                         index + 1
                     ));
                 }
+
+                return match usize::from_str_radix(arr_index_str.as_str(), 10) {
+                    Ok(arr_index) => {
+                        return Ok(ReadResult {
+                            name: None,
+                            token_kind: Some(TokenKind::ArrayIndex(arr_index)),
+                            state: ParserState::AfterToken,
+                            chars_read: i + 1
+                        });
+                    }
+
+                    Err(e) => {
+                        Err(VariableError::new(
+                            format!(
+                                "Failed to parse array index '{}': {}. \
+                                    Variable notation:\n{}",
+                                arr_index_str,
+                                e.to_string(),
+                                var_str
+                            ).as_str(),
+                            index + i - 1
+                        ))
+                    }
+                }
             }
-        }
 
-        self.state = ParserState::End;
-
-        if self.current_name.is_empty() {
-            Err(VariableError::new(
-                format!(
-                    "Unexpected end of variable notation string; expecting a name. \
-                    Variable notation: \n{}",
-                    self.var_str
-                ).as_str(),
-                index
-            ))
-        } else {
-            self.nodes.push(
-                Token { name: self.current_name.to_owned(), kind: TokenKind::Leaf }
-            );
-
-            Ok(self.var_str.len() - index)
+            _ => {
+                return Err(VariableError::new(
+                    format!(
+                        "Invalid character '{}' in variable notation:\n{}",
+                        c.to_string(),
+                        var_str
+                    ).as_str(),
+                    var_str.len() - index
+                ));
+            }
         }
     }
 
-    fn read_array_chars(&mut self, index: usize) -> Result<usize, VariableError> {
-        for (i, c) in self.var_str[index..].chars().enumerate() {
+    Err(VariableError::new(
+        format!(
+            "Unexpected end of variable notation string; expecting decimal digits or ']'. \
+                 Variable notation:\n{}",
+            var_str
+        ).as_str(),
+        var_str.len() - index
+    ))
+}
+
+fn read_function_call_chars(var_str: &str, index: usize) -> Result<ReadResult, VariableError> {
+    let mut is_escaping = false;
+    let mut is_in_quotes = false;
+    let mut current_arg = "".to_string();
+
+    let mut expect_comma_or_paren = false;
+
+    let mut args: Vec<String> = vec![];
+
+    const WHITESPACE_CHARS: [char; 10] = [
+        ' ', // Space
+        '\t', // Tab
+        '\n', // Newline
+        '\r', // Carriage return,
+        '\u{000B}', // Vertical tab
+        '\u{0085}', // Next line
+        '\u{200E}', // Left-to-right mark
+        '\u{200F}', // Right-to-left mark
+        '\u{2028}', // Line separator,
+        '\u{2029}', // Paragraph separator
+    ];
+
+    for (i, c) in var_str[index..].chars().enumerate() {
+        if expect_comma_or_paren {
             match c {
-                '0'..='9' => {
-                    self.current_array_index_str.push_str(c.to_string().as_str())
+                ',' => {
+                    expect_comma_or_paren = false;
+                    continue
                 }
 
-                ']' => {
-                    if self.current_array_index_str.is_empty() {
-                        return Err(VariableError::new(
-                            format!(
-                                "Missing array index in variable notation:\n{}",
-                                self.var_str
-                            ).as_str(),
-                            index + 1
-                        ));
-                    }
+                ')' => {
+                    return Ok(ReadResult {
+                        name: None,
+                        token_kind: Some(TokenKind::FunctionCall(args)),
+                        state: ParserState::AfterToken,
+                        chars_read: i + 1
+                    });
+                }
 
-                    return match usize::from_str_radix(self.current_array_index_str.as_str(), 10) {
-                        Ok(arr_index) => {
-                            self.nodes.push(
-                                Token {
-                                    name: self.current_name.to_owned(),
-                                    kind: TokenKind::ArrayIndex(arr_index)
-                                }
-                            );
-
-                            self.current_name = "".to_string();
-                            self.current_array_index_str = "".to_string();
-                            self.state = ParserState::AfterToken;
-                            Ok(i + 1)
-                        }
-
-                        Err(e) => {
-                            Err(VariableError::new(
-                                format!(
-                                    "Failed to parse array index '{}': {}. \
-                                    Variable notation:\n{}",
-                                    self.current_array_index_str,
-                                    e.to_string(),
-                                    self.var_str
-                                ).as_str(),
-                                index + i - 1
-                            ))
-                        }
-                    }
+                _ if WHITESPACE_CHARS.contains(&c) => {
+                    // Ignore.
+                    continue;
                 }
 
                 _ => {
+                    // Invalid character at this point.
+                    eprintln!(
+                        "erring, is_in_quotes: {:?}, is_escaping: {:?}, current_arg: {:?}, args: {:?}",
+                        is_in_quotes,
+                        is_escaping,
+                        current_arg,
+                        args
+                    );
+
                     return Err(VariableError::new(
                         format!(
-                            "Invalid character '{}' in variable notation:\n{}",
+                            "Invalid character '{}' in function args in variable notation:\n{}\
+                                Expected whitespace, ',', or ')' at this point.",
                             c.to_string(),
-                            self.var_str
+                            var_str
                         ).as_str(),
-                        self.var_str.len() - index
+                        index + i
                     ));
                 }
             }
         }
 
-        Err(VariableError::new(
-            format!(
-                "Unexpected end of variable notation string; expecting decimal digits or ']'. \
-                 Variable notation:\n{}",
-                self.var_str
-            ).as_str(),
-            self.var_str.len() - index
-        ))
-    }
-
-    // Todo split this up into its own parser further
-    fn read_function_call_chars(&mut self, index: usize) -> Result<usize, VariableError> {
-        let mut is_escaping = false;
-        let mut is_in_quotes = false;
-        let mut current_arg = "".to_string();
-
-        let mut expect_comma_or_paren = false;
-
-        let mut args: Vec<String> = vec![];
-
-        const WHITESPACE_CHARS: [char; 10] = [
-            ' ', // Space
-            '\t', // Tab
-            '\n', // Newline
-            '\r', // Carriage return,
-            '\u{000B}', // Vertical tab
-            '\u{0085}', // Next line
-            '\u{200E}', // Left-to-right mark
-            '\u{200F}', // Right-to-left mark
-            '\u{2028}', // Line separator,
-            '\u{2029}', // Paragraph separator
-        ];
-
-        for (i, c) in self.var_str[index..].chars().enumerate() {
-            if expect_comma_or_paren {
-                match c {
-                    ',' => {
-                        expect_comma_or_paren = false;
-                        continue
-                    }
-
-                    ')' => {
-                        self.nodes.push(
-                            Token {
-                                name: self.current_name.to_owned(),
-                                kind: TokenKind::FunctionCall(args)
-                            }
-                        );
-
-                        self.current_name = "".to_string();
-                        self.state = ParserState::AfterToken;
-                        return Ok(i + 1);
-                    }
-
-                    _ if WHITESPACE_CHARS.contains(&c) => {
-                        // Ignore.
-                        continue;
-                    }
-
-                    _ => {
-                        // Invalid character at this point.
-                        eprintln!(
-                            "erring, is_in_quotes: {:?}, is_escaping: {:?}, current_arg: {:?}, args: {:?}",
-                            is_in_quotes,
-                            is_escaping,
-                            current_arg,
-                            args
-                        );
-
-                        return Err(VariableError::new(
-                            format!(
-                                "Invalid character '{}' in function args in variable notation:\n{}\
-                                Expected whitespace, ',', or ')' at this point.",
-                                c.to_string(),
-                                self.var_str
-                            ).as_str(),
-                            index + i
-                        ));
-                    }
-                }
-            }
-
-            match c {
-                '"' => {
-                    if is_in_quotes {
-                        if is_escaping {
-                            // If escaping, use literal '"' character as part of argument value
-                            current_arg.push_str(c.to_string().as_str());
-                            is_escaping = false
-                        } else {
-                            // Otherwise, close quotes, end of argument value
-                            args.push(current_arg.to_owned());
-                            current_arg = "".to_string();
-                            is_in_quotes = false;
-
-                            // After an argument ends, we only expect limited possible values,
-                            // so this becomes a special case for the next char
-                            expect_comma_or_paren = true;
-                        }
-
-                        continue;
-                    }
-
-                    if !current_arg.is_empty() {
-                        // Error, a quote mid-argument
-                        eprintln!(
-                            "erring, is_in_quotes: {:?}, is_escaping: {:?}, current_arg: {:?}, args: {:?}",
-                            is_in_quotes,
-                            is_escaping,
-                            current_arg,
-                            args
-                        );
-
-                        return Err(VariableError::new(
-                            format!(
-                                "Unexpected '\"' quote character mid-argument in variable notation:\n{}",
-                                self.var_str
-                            ).as_str(),
-                            index + i
-                        ));
-                    }
-
-                    // Nothing in current argument yet, start argument by being in quotes.
-                    is_in_quotes = true;
-                }
-
-                '\\' => {
-                    if is_in_quotes {
-                        if is_escaping {
-                            // If we're already escaping, this adds the literal backslash char
-                            current_arg.push_str(c.to_string().as_str());
-                            is_escaping = false;
-                        } else {
-                            // Start an escape if we're in quotes
-                            is_escaping = true
-                        }
+        match c {
+            '"' => {
+                if is_in_quotes {
+                    if is_escaping {
+                        // If escaping, use literal '"' character as part of argument value
+                        current_arg.push_str(c.to_string().as_str());
+                        is_escaping = false
                     } else {
-                        // If not in quotes, consider it a normal character
-                        current_arg.push_str(c.to_string().as_str());
-                    }
-                }
-
-                ',' => {
-                    if current_arg.is_empty() && !is_in_quotes {
-                        // Don't expect a comma when we don't have an ongoing current argument
-                        eprintln!(
-                            "erring, is_in_quotes: {:?}, is_escaping: {:?}, current_arg: {:?}, args: {:?}",
-                            is_in_quotes,
-                            is_escaping,
-                            current_arg,
-                            args
-                        );
-
-                        return Err(VariableError::new(
-                            format!(
-                                "Unexpected ',' in function args in variable notation: \n{}",
-                                self.var_str
-                            ).as_str(),
-                            index + 1
-                        ));
-                    }
-
-                    if is_in_quotes {
-                        current_arg.push_str(c.to_string().as_str());
-                    } else if !current_arg.is_empty() {
+                        // Otherwise, close quotes, end of argument value
                         args.push(current_arg.to_owned());
                         current_arg = "".to_string();
-                    }
-                }
+                        is_in_quotes = false;
 
-                ')' => {
-                    if !is_in_quotes {
-                        // If not in quotes, then this ends the argument list and the function
-                        // call syntax
-                        if !current_arg.is_empty() {
-                            // If we had an ongoing argument, add it to the list first
-                            args.push(current_arg.to_owned());
-                        }
-
-                        // Finish up creating the token and push it
-                        self.nodes.push(Token {
-                            name: self.current_name.to_owned(),
-                            kind: TokenKind::FunctionCall(args)
-                        });
-
-                        self.current_name = "".to_string();
-                        self.state = ParserState::AfterToken;
-                        return Ok(i + 1);
+                        // After an argument ends, we only expect limited possible values,
+                        // so this becomes a special case for the next char
+                        expect_comma_or_paren = true;
                     }
 
-                    // Otherwise, add to current arg
-                    current_arg.push_str(c.to_string().as_str());
+                    continue;
                 }
 
-                _ if WHITESPACE_CHARS.contains(&c) => {
-                   if is_in_quotes {
-                       current_arg.push_str(c.to_string().as_str());
-                   }
+                if !current_arg.is_empty() {
+                    // Error, a quote mid-argument
+                    eprintln!(
+                        "erring, is_in_quotes: {:?}, is_escaping: {:?}, current_arg: {:?}, args: {:?}",
+                        is_in_quotes,
+                        is_escaping,
+                        current_arg,
+                        args
+                    );
+
+                    return Err(VariableError::new(
+                        format!(
+                            "Unexpected '\"' quote character mid-argument in variable notation:\n{}",
+                            var_str
+                        ).as_str(),
+                        index + i
+                    ));
                 }
 
-                _ => {
-                    // Any other characters, add to current_arg
+                // Nothing in current argument yet, start argument by being in quotes.
+                is_in_quotes = true;
+            }
+
+            '\\' => {
+                if is_in_quotes {
+                    if is_escaping {
+                        // If we're already escaping, this adds the literal backslash char
+                        current_arg.push_str(c.to_string().as_str());
+                        is_escaping = false;
+                    } else {
+                        // Start an escape if we're in quotes
+                        is_escaping = true
+                    }
+                } else {
+                    // If not in quotes, consider it a normal character
                     current_arg.push_str(c.to_string().as_str());
                 }
             }
 
-            // If the is_escaping flag was still set when the character just seen was _not_ a
-            // backslash, this flag should be turned off again.
-            if is_escaping && c != '\\' {
-                is_escaping = false;
+            ',' => {
+                if current_arg.is_empty() && !is_in_quotes {
+                    // Don't expect a comma when we don't have an ongoing current argument
+                    eprintln!(
+                        "erring, is_in_quotes: {:?}, is_escaping: {:?}, current_arg: {:?}, args: {:?}",
+                        is_in_quotes,
+                        is_escaping,
+                        current_arg,
+                        args
+                    );
+
+                    return Err(VariableError::new(
+                        format!(
+                            "Unexpected ',' in function args in variable notation: \n{}",
+                            var_str
+                        ).as_str(),
+                        index + 1
+                    ));
+                }
+
+                if is_in_quotes {
+                    current_arg.push_str(c.to_string().as_str());
+                } else if !current_arg.is_empty() {
+                    args.push(current_arg.to_owned());
+                    current_arg = "".to_string();
+                }
+            }
+
+            ')' => {
+                if !is_in_quotes {
+                    // If not in quotes, then this ends the argument list and the function
+                    // call syntax
+                    if !current_arg.is_empty() {
+                        // If we had an ongoing argument, add it to the list first
+                        args.push(current_arg.to_owned());
+                    }
+
+                    return Ok(ReadResult {
+                        name: None,
+                        token_kind: Some(TokenKind::FunctionCall(args)),
+                        state: ParserState::AfterToken,
+                        chars_read: i + 1
+                    });
+                }
+
+                // Otherwise, add to current arg
+                current_arg.push_str(c.to_string().as_str());
+            }
+
+            _ if WHITESPACE_CHARS.contains(&c) => {
+                if is_in_quotes {
+                    current_arg.push_str(c.to_string().as_str());
+                }
+            }
+
+            _ => {
+                // Any other characters, add to current_arg
+                current_arg.push_str(c.to_string().as_str());
             }
         }
 
-        // Reached end of var_str
-        // Shouldn't get here at all, expecting a ) to finish things, which is above.
-        eprintln!(
-            "erring, is_in_quotes: {:?}, is_escaping: {:?}, current_arg: {:?}, args: {:?}",
-            is_in_quotes,
-            is_escaping,
-            current_arg,
-            args
-        );
-
-        Err(VariableError::new(
-            format!(
-                "Unexpected end of variable notation string during function call syntax. \
-                Variable notation:\n{}",
-                self.var_str
-            ).as_str(),
-            self.var_str.len() - index
-        ))
+        // If the is_escaping flag was still set when the character just seen was _not_ a
+        // backslash, this flag should be turned off again.
+        if is_escaping && c != '\\' {
+            is_escaping = false;
+        }
     }
 
-    fn read_after_token_chars(&mut self, index: usize) -> Result<usize, VariableError> {
-        match self.var_str.chars().nth(index) {
-            Some('.') => {
-                self.state = ParserState::Name;
-                Ok(1)
-            }
+    // Reached end of var_str
+    // Shouldn't get here at all, expecting a ) to finish things, which is above.
+    eprintln!(
+        "erring, is_in_quotes: {:?}, is_escaping: {:?}, current_arg: {:?}, args: {:?}",
+        is_in_quotes,
+        is_escaping,
+        current_arg,
+        args
+    );
 
-            Some(c) => {
-                Err(VariableError::new(
-                    format!(
-                        "Invalid character '{}' (expected '.') in variable notation:\n{}",
-                        c.to_string(),
-                        self.var_str
-                    ).as_str(),
-                    index
-                ))
-            }
+    Err(VariableError::new(
+        format!(
+            "Unexpected end of variable notation string during function call syntax. \
+                Variable notation:\n{}",
+            var_str
+        ).as_str(),
+        var_str.len() - index
+    ))
+}
 
-            None => {
-                self.state = ParserState::End;
-                Ok(0)
-            }
-        }
+fn read_after_token_chars(var_str: &str, index: usize) -> Result<ReadResult, VariableError> {
+    match var_str.chars().nth(index) {
+        Some('.') => Ok(ReadResult {
+            name: None,
+            token_kind: None,
+            state: ParserState::Name,
+            chars_read: 1
+        }),
+
+        Some(c) => Err(VariableError::new(
+            format!(
+                "Invalid character '{}' (expected '.') in variable notation:\n{}",
+                c.to_string(),
+                var_str
+            ).as_str(),
+            index
+        )),
+
+        None => Ok(ReadResult {
+            name: None,
+            token_kind: None,
+            state: ParserState::End,
+            chars_read: 0
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::variables::{Parser, Token, TokenKind};
+    use crate::variables::{parse, Token, TokenKind};
 
     #[test]
     fn parses_a_single_leaf_node() {
         assert_eq!(
-            Parser::new("leaf_token").parse().unwrap(),
+            parse("leaf_token").unwrap(),
             vec![Token { name: "leaf_token".to_string(), kind: TokenKind::Leaf }]
         );
 
         assert!(
-            Parser::new("!!invalid name!!").parse().is_err()
+            parse("!!invalid name!!").is_err()
         )
     }
 
     #[test]
     fn parses_a_leaf_after_a_namespace() {
         assert_eq!(
-            Parser::new("my_namespace.my_leaf").parse().unwrap(),
+            parse("my_namespace.my_leaf").unwrap(),
             vec![
                 Token { name: "my_namespace".to_string(), kind: TokenKind::Namespace },
                 Token { name: "my_leaf".to_string(), kind: TokenKind::Leaf }
@@ -503,14 +515,14 @@ mod tests {
 
         // Wrong separator
         assert!(
-            Parser::new("my_namespace|my_leaf").parse().is_err()
+            parse("my_namespace|my_leaf").is_err()
         );
     }
 
     #[test]
     fn parses_multiple_namespaces() {
         assert_eq!(
-            Parser::new("my_namespace.my_sub_namespace.my_leaf").parse().unwrap(),
+            parse("my_namespace.my_sub_namespace.my_leaf").unwrap(),
             vec![
                 Token { name: "my_namespace".to_string(), kind: TokenKind::Namespace },
                 Token { name: "my_sub_namespace".to_string(), kind: TokenKind::Namespace },
@@ -522,7 +534,7 @@ mod tests {
     #[test]
     fn parses_an_array_index_token() {
         assert_eq!(
-            Parser::new("my_namespace.arr[823]").parse().unwrap(),
+            parse("my_namespace.arr[823]").unwrap(),
             vec![
                 Token { name: "my_namespace".to_string(), kind: TokenKind::Namespace },
                 Token { name: "arr".to_string(), kind: TokenKind::ArrayIndex(823) }
@@ -531,12 +543,12 @@ mod tests {
 
         // Unclosed array notation
         assert!(
-            Parser::new("my_namespace.arr[823").parse().is_err()
+            parse("my_namespace.arr[823").is_err()
         );
 
         // Non-digits in index
         assert!(
-            Parser::new("my_namespace.arr[INVALID]").parse().is_err()
+            parse("my_namespace.arr[INVALID]").is_err()
         );
     }
 
@@ -558,7 +570,7 @@ mod tests {
     fn parses_a_function_call() {
         // Oh aren't all these fun
         assert_eq!(
-            Parser::new("my_namespace.func(abc, 123, sup)").parse().unwrap(),
+            parse("my_namespace.func(abc, 123, sup)").unwrap(),
             vec![
                 Token { name: "my_namespace".to_string(), kind: TokenKind::Namespace },
                 func_token("func", vec!["abc", "123", "sup"])
@@ -566,54 +578,54 @@ mod tests {
         );
 
         assert_eq!(
-            Parser::new(r#"fun("ab")"#).parse().unwrap(),
+            parse(r#"fun("ab")"#).unwrap(),
             vec![func_token("fun", vec!["ab"])]
         );
 
         assert_eq!(
-            Parser::new(r#"fun("abc",  foo   )"#).parse().unwrap(),
+            parse(r#"fun("abc",  foo   )"#).unwrap(),
             vec![func_token("fun", vec!["abc", "foo"])]
         );
 
         assert_eq!(
-            Parser::new(r#"fun(arg1,"arg2",arg3)"#).parse().unwrap(),
+            parse(r#"fun(arg1,"arg2",arg3)"#).unwrap(),
             vec![func_token("fun", vec!["arg1", "arg2", "arg3"])]
         );
 
         assert_eq!(
-            Parser::new(r#"fun(arg1, "arg number two", "arg \"three\"")"#).parse().unwrap(),
+            parse(r#"fun(arg1, "arg number two", "arg \"three\"")"#).unwrap(),
             vec![func_token("fun", vec!["arg1", "arg number two", r#"arg "three""#])]
         );
 
         assert_eq!(
-            Parser::new(r#"fun(ar\g1   ,"ar\g2",  arg3)"#).parse().unwrap(),
+            parse(r#"fun(ar\g1   ,"ar\g2",  arg3)"#).unwrap(),
             vec![func_token("fun", vec![r#"ar\g1"#, r#"arg2"#, "arg3"])]
         );
 
         assert_eq!(
-            Parser::new(r#"fun(ar\\g1, "arg\\2", arg3)"#).parse().unwrap(),
+            parse(r#"fun(ar\\g1, "arg\\2", arg3)"#).unwrap(),
             vec![func_token("fun", vec![r#"ar\\g1"#, r#"arg\2"#, "arg3"])]
         );
 
         assert_eq!(
-            Parser::new("fun_1_2()").parse().unwrap(),
+            parse("fun_1_2()").unwrap(),
             vec![func_token("fun_1_2", vec![])]
         );
 
         assert_eq!(
-            Parser::new("fun(        )").parse().unwrap(),
+            parse("fun(        )").unwrap(),
             vec![func_token("fun", vec![])]
         );
 
         assert_eq!(
-            Parser::new(r#"fun(*, C3)"#).parse().unwrap(),
+            parse(r#"fun(*, C3)"#).unwrap(),
             vec![func_token("fun", vec!["*", "C3"])]
         );
 
         assert_eq!(
-            Parser::new(
+            parse(
                 r#"namespace.fun1(f1_arg1, "f1 arg \\two\\").fun2("f2 \"arg\" one", f2_arg_two)"#
-            ).parse().unwrap(),
+            ).unwrap(),
             vec![
                 Token { name: "namespace".to_string(), kind: TokenKind::Namespace },
                 func_token("fun1", vec!["f1_arg1", r#"f1 arg \two\"#]),
@@ -623,38 +635,38 @@ mod tests {
 
         // Invalid characters
         assert!(
-            Parser::new("my_namespace.func(abc), 123)").parse().is_err()
+            parse("my_namespace.func(abc), 123)").is_err()
         );
 
         // Unclosed parentheses
         assert!(
-            Parser::new("fun(foo").parse().is_err()
+            parse("fun(foo").is_err()
         );
 
         // Unclosed quotes, which means it's interpreted as missing quote /
         // missing closing parentheses
         assert!(
-            Parser::new(r#"fun("foo)"#).parse().is_err()
+            parse(r#"fun("foo)"#).is_err()
         );
 
         // Uncloses parentheses, the opening paren at the end is irrelevant
         assert!(
-            Parser::new(r#"fun("foo", bar("#).parse().is_err()
+            parse(r#"fun("foo", bar("#).is_err()
         );
 
         // Unclosed parenthesis due to still being in quoted string due to escaped quote
         assert!(
-            Parser::new(r#"fun("arg\")"#).parse().is_err()
+            parse(r#"fun("arg\")"#).is_err()
         );
 
         // Unexpected comma
         assert!(
-            Parser::new("fun(,foo)").parse().is_err()
+            parse("fun(,foo)").is_err()
         );
 
         // Unexpected character after closing quotes for an arg; expects a comma
         assert!(
-            Parser::new(r#"fun("abc" asdf"#).parse().is_err()
+            parse(r#"fun("abc" asdf"#).is_err()
         );
     }
 
@@ -662,7 +674,7 @@ mod tests {
     fn parses_realistic_examples() {
         // Accessing a field from the event that triggered this action
         assert_eq!(
-            Parser::new("event.key").parse().unwrap(),
+            parse("event.key").unwrap(),
             vec![
                 Token { name: "event".to_string(), kind: TokenKind::Namespace },
                 Token { name: "key".to_string(), kind: TokenKind::Leaf },
@@ -671,7 +683,7 @@ mod tests {
 
         // Accessing a specific MIDI control value from state
         assert_eq!(
-            Parser::new("state.midi.channels[3].controls[15].value").parse().unwrap(),
+            parse("state.midi.channels[3].controls[15].value").unwrap(),
             vec![
                 Token { name: "state".to_string(), kind: TokenKind::Namespace },
                 Token { name: "midi".to_string(), kind: TokenKind::Namespace },
@@ -683,7 +695,7 @@ mod tests {
 
         // Checking if a note is currently pressed
         assert_eq!(
-            Parser::new("state.midi.note_on(*, 7)").parse().unwrap(),
+            parse("state.midi.note_on(*, 7)").unwrap(),
             vec![
                 Token { name: "state".to_string(), kind: TokenKind::Namespace },
                 Token { name: "midi".to_string(), kind: TokenKind::Namespace },
