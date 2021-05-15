@@ -58,19 +58,21 @@ impl Parser {
         }
 
         loop {
-            match self.state {
+            let chars_read = match self.state {
                 ParserState::Name => self.read_name_chars()?,
                 ParserState::Array => self.read_array_chars()?,
                 ParserState::FunctionCall => self.read_function_call_chars()?,
                 ParserState::AfterToken => self.read_after_token_chars()?,
                 ParserState::End => break
-            }
+            };
+
+            self.index += chars_read;
         }
 
         Ok(self.nodes)
     }
 
-    fn read_name_chars(&mut self) -> Result<(), VariableError> {
+    fn read_name_chars(&mut self) -> Result<usize, VariableError> {
         for (i, c) in self.var_str[self.index..].chars().enumerate() {
             match c {
                 // Valid token name characters
@@ -85,7 +87,6 @@ impl Parser {
 
                     self.current_name = "".to_string();
                     self.state = ParserState::Name;
-                    self.index += i + 1;
 
                     self.state = if self.index >= self.var_str.len() {
                         ParserState::End
@@ -93,19 +94,17 @@ impl Parser {
                         ParserState::Name
                     };
 
-                    return Ok(());
+                    return Ok(i + 1);
                 }
 
                 '[' => {
-                    self.index += i + 1;
                     self.state = ParserState::Array;
-                    return Ok(());
+                    return Ok(i + 1);
                 },
 
                 '(' => {
-                    self.index += i + 1;
                     self.state = ParserState::FunctionCall;
-                    return Ok(());
+                    return Ok(i + 1);
                 },
 
                 _ => {
@@ -132,11 +131,11 @@ impl Parser {
                 Token { name: self.current_name.to_owned(), kind: TokenKind::Leaf }
             );
 
-            Ok(())
+            Ok(self.var_str.len() - self.index)
         }
     }
 
-    fn read_array_chars(&mut self) -> Result<(), VariableError> {
+    fn read_array_chars(&mut self) -> Result<usize, VariableError> {
         for (i, c) in self.var_str[self.index..].chars().enumerate() {
             match c {
                 '0'..='9' => {
@@ -161,11 +160,10 @@ impl Parser {
                                 }
                             );
 
-                            self.index += i + 1;
                             self.current_name = "".to_string();
                             self.current_array_index_str = "".to_string();
                             self.state = ParserState::AfterToken;
-                            Ok(())
+                            Ok(i + 1)
                         }
 
                         Err(e) => {
@@ -200,7 +198,7 @@ impl Parser {
     }
 
     // Todo split this up into its own parser further
-    fn read_function_call_chars(&mut self) -> Result<(), VariableError> {
+    fn read_function_call_chars(&mut self) -> Result<usize, VariableError> {
         let mut is_escaping = false;
         let mut is_in_quotes = false;
         let mut current_arg = "".to_string();
@@ -239,9 +237,8 @@ impl Parser {
                         );
 
                         self.current_name = "".to_string();
-                        self.index += i + 1;
                         self.state = ParserState::AfterToken;
-                        return Ok(());
+                        return Ok(i + 1);
                     }
 
                     _ if WHITESPACE_CHARS.contains(&c) => {
@@ -370,8 +367,7 @@ impl Parser {
 
                         self.current_name = "".to_string();
                         self.state = ParserState::AfterToken;
-                        self.index += i + 1;
-                        return Ok(());
+                        return Ok(i + 1);
                     }
 
                     // Otherwise, add to current arg
@@ -414,12 +410,11 @@ impl Parser {
         )))
     }
 
-    fn read_after_token_chars(&mut self) -> Result<(), VariableError> {
+    fn read_after_token_chars(&mut self) -> Result<usize, VariableError> {
         match self.var_str.chars().nth(self.index) {
             Some('.') => {
                 self.state = ParserState::Name;
-                self.index += 1;
-                Ok(())
+                Ok(1)
             }
 
             Some(c) => {
@@ -434,7 +429,7 @@ impl Parser {
 
             None => {
                 self.state = ParserState::End;
-                Ok(())
+                Ok(0)
             }
         }
     }
