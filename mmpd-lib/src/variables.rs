@@ -1,14 +1,15 @@
-use std::fmt::{Display, Formatter};
-use std::fmt;
+mod functions;
+
+use std::fmt::{self, Display, Formatter};
 
 #[derive(PartialEq, Debug)]
-struct Token {
-    name: String,
-    kind: TokenKind,
+pub struct Token {
+    pub name: String,
+    pub kind: TokenKind,
 }
 
 #[derive(PartialEq, Debug)]
-enum TokenKind {
+pub enum TokenKind {
     Leaf,
     ArrayIndex(usize),
     Namespace,
@@ -16,7 +17,7 @@ enum TokenKind {
 }
 
 #[derive(Debug)]
-struct VariableError<'a> {
+pub struct VariableError<'a> {
     message: String,
     var_str: &'a str,
     location: usize
@@ -52,6 +53,21 @@ impl Display for VariableError<'_> {
             " ".repeat(self.location + 1)
         )
     }
+}
+
+fn is_space(c: &char) -> bool {
+    [
+        ' ', // Space
+        '\t', // Tab
+        '\n', // Newline
+        '\r', // Carriage return,
+        '\u{000B}', // Vertical tab
+        '\u{0085}', // Next line
+        '\u{200E}', // Left-to-right mark
+        '\u{200F}', // Right-to-left mark
+        '\u{2028}', // Line separator,
+        '\u{2029}', // Paragraph separator
+    ].contains(c)
 }
 
 enum ParserState {
@@ -94,7 +110,7 @@ fn parse(var_str: &str) -> Result<Vec<Token>, VariableError> {
         let read_result = match state {
             ParserState::Name => read_name_chars(&var_str[index..]),
             ParserState::Array => read_array_chars(&var_str[index..]),
-            ParserState::FunctionCall => read_function_call_chars(&var_str[index..]),
+            ParserState::FunctionCall => functions::read_function_call_chars(&var_str[index..]),
             ParserState::AfterToken => read_after_token_chars(&var_str[index..]),
             ParserState::End => break
         }.map_err(|err| {
@@ -245,205 +261,6 @@ fn read_array_chars(var_str: &str) -> Result<ReadResult, VariableError> {
     ))
 }
 
-fn read_function_call_chars(var_str: &str) -> Result<ReadResult, VariableError> {
-    let mut is_escaping = false;
-    let mut is_in_quotes = false;
-    let mut current_arg = "".to_string();
-
-    let mut expect_comma_or_paren = false;
-
-    let mut args: Vec<String> = vec![];
-
-    const WHITESPACE_CHARS: [char; 10] = [
-        ' ', // Space
-        '\t', // Tab
-        '\n', // Newline
-        '\r', // Carriage return,
-        '\u{000B}', // Vertical tab
-        '\u{0085}', // Next line
-        '\u{200E}', // Left-to-right mark
-        '\u{200F}', // Right-to-left mark
-        '\u{2028}', // Line separator,
-        '\u{2029}', // Paragraph separator
-    ];
-
-    for (i, c) in var_str.chars().enumerate() {
-        if expect_comma_or_paren {
-            match c {
-                ',' => {
-                    expect_comma_or_paren = false;
-                    continue
-                }
-
-                ')' => {
-                    return Ok(ReadResult {
-                        name: None,
-                        token_kind: Some(TokenKind::FunctionCall(args)),
-                        state: ParserState::AfterToken,
-                        chars_read: i + 1
-                    });
-                }
-
-                _ if WHITESPACE_CHARS.contains(&c) => {
-                    // Ignore.
-                    continue;
-                }
-
-                _ => {
-                    // Invalid character at this point.
-                    eprintln!(
-                        "erring, is_in_quotes: {:?}, is_escaping: {:?}, current_arg: {:?}, args: {:?}",
-                        is_in_quotes,
-                        is_escaping,
-                        current_arg,
-                        args
-                    );
-
-                    return Err(VariableError::new(
-                        format!("Invalid character '{}' in function args", c),
-                        i
-                    ));
-                }
-            }
-        }
-
-        match c {
-            '"' => {
-                if is_in_quotes {
-                    if is_escaping {
-                        // If escaping, use literal '"' character as part of argument value
-                        current_arg.push_str(c.to_string().as_str());
-                        is_escaping = false
-                    } else {
-                        // Otherwise, close quotes, end of argument value
-                        args.push(current_arg.to_owned());
-                        current_arg = "".to_string();
-                        is_in_quotes = false;
-
-                        // After an argument ends, we only expect limited possible values,
-                        // so this becomes a special case for the next char
-                        expect_comma_or_paren = true;
-                    }
-
-                    continue;
-                }
-
-                if !current_arg.is_empty() {
-                    // Error, a quote mid-argument
-                    eprintln!(
-                        "erring, is_in_quotes: {:?}, is_escaping: {:?}, current_arg: {:?}, args: {:?}",
-                        is_in_quotes,
-                        is_escaping,
-                        current_arg,
-                        args
-                    );
-
-                    return Err(VariableError::new(
-                        "Unexpected '\"' quote character mid-argument".to_string(),
-                        i
-                    ));
-                }
-
-                // Nothing in current argument yet, start argument by being in quotes.
-                is_in_quotes = true;
-            }
-
-            '\\' => {
-                if is_in_quotes {
-                    if is_escaping {
-                        // If we're already escaping, this adds the literal backslash char
-                        current_arg.push_str(c.to_string().as_str());
-                        is_escaping = false;
-                    } else {
-                        // Start an escape if we're in quotes
-                        is_escaping = true
-                    }
-                } else {
-                    // If not in quotes, consider it a normal character
-                    current_arg.push_str(c.to_string().as_str());
-                }
-            }
-
-            ',' => {
-                if current_arg.is_empty() && !is_in_quotes {
-                    // Don't expect a comma when we don't have an ongoing current argument
-                    eprintln!(
-                        "erring, is_in_quotes: {:?}, is_escaping: {:?}, current_arg: {:?}, args: {:?}",
-                        is_in_quotes,
-                        is_escaping,
-                        current_arg,
-                        args
-                    );
-
-                    return Err(VariableError::new(
-                        "Unexpected ',' in function args".to_string(),
-                        1
-                    ));
-                }
-
-                if is_in_quotes {
-                    current_arg.push_str(c.to_string().as_str());
-                } else if !current_arg.is_empty() {
-                    args.push(current_arg.to_owned());
-                    current_arg = "".to_string();
-                }
-            }
-
-            ')' => {
-                if !is_in_quotes {
-                    // If not in quotes, then this ends the argument list and the function
-                    // call syntax
-                    if !current_arg.is_empty() {
-                        // If we had an ongoing argument, add it to the list first
-                        args.push(current_arg.to_owned());
-                    }
-
-                    return Ok(ReadResult {
-                        name: None,
-                        token_kind: Some(TokenKind::FunctionCall(args)),
-                        state: ParserState::AfterToken,
-                        chars_read: i + 1
-                    });
-                }
-
-                // Otherwise, add to current arg
-                current_arg.push_str(c.to_string().as_str());
-            }
-
-            _ if WHITESPACE_CHARS.contains(&c) => {
-                if is_in_quotes {
-                    current_arg.push_str(c.to_string().as_str());
-                }
-            }
-
-            _ => {
-                // Any other characters, add to current_arg
-                current_arg.push_str(c.to_string().as_str());
-            }
-        }
-
-        // If the is_escaping flag was still set when the character just seen was _not_ a
-        // backslash, this flag should be turned off again.
-        if is_escaping && c != '\\' {
-            is_escaping = false;
-        }
-    }
-
-    // Reached end of var_str
-    // Shouldn't get here at all, expecting a ) to finish things, which is above.
-    eprintln!(
-        "erring, is_in_quotes: {:?}, is_escaping: {:?}, current_arg: {:?}, args: {:?}",
-        is_in_quotes,
-        is_escaping,
-        current_arg,
-        args
-    );
-
-    Err(VariableError::new(
-        "Unexpected end of variable notation string during function call syntax.".to_string(),
-        var_str.len()
-    ))
-}
 
 fn read_after_token_chars(var_str: &str) -> Result<ReadResult, VariableError> {
     match var_str.chars().nth(0) {
@@ -599,6 +416,16 @@ mod tests {
         );
 
         assert_eq!(
+            parse("fun(  spaces_before_arg)").unwrap(),
+            vec![func_token("fun", vec!["spaces_before_arg"])]
+        );
+
+        assert_eq!(
+            parse("fun(spaces_after_arg   )").unwrap(),
+            vec![func_token("fun", vec!["spaces_after_arg"])]
+        );
+
+        assert_eq!(
             parse(r#"fun(*, C3)"#).unwrap(),
             vec![func_token("fun", vec!["*", "C3"])]
         );
@@ -649,6 +476,11 @@ mod tests {
         assert!(
             parse(r#"fun("abc" asdf"#).is_err()
         );
+
+        // Spaces in unquoted arguments aren't supported
+        assert!(
+            parse("fun(  bare value should not have spaces in middle , foo)").is_err()
+        )
     }
 
     #[test]
