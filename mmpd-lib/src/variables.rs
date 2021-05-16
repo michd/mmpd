@@ -1,3 +1,6 @@
+use std::fmt::{Display, Formatter};
+use std::fmt;
+
 #[derive(PartialEq, Debug)]
 struct Token {
     name: String,
@@ -13,22 +16,41 @@ enum TokenKind {
 }
 
 #[derive(Debug)]
-struct VariableError {
+struct VariableError<'a> {
     message: String,
+    var_str: &'a str,
     location: usize
 }
 
-impl VariableError {
-    fn new(message: &str, location: usize) -> VariableError {
+impl <'a> VariableError<'a> {
+    fn new(message: String, location: usize) -> VariableError<'a> {
         VariableError {
             message: message.to_string(),
+            var_str: "",
             location
         }
     }
 
-    fn offset_location(mut self, location_offset: usize) -> Self{
+    fn offset_location(mut self, location_offset: usize) -> Self {
         self.location += location_offset;
         self
+    }
+
+    fn add_var_str(mut self, var_str: &'a str) -> Self {
+        self.var_str = var_str;
+        self
+    }
+}
+
+impl Display for VariableError<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Variable Parsing Error: {}\n\nVariable notation:\n    {}\n{}___^",
+            self.message,
+            self.var_str,
+            " ".repeat(self.location + 1)
+        )
     }
 }
 
@@ -60,7 +82,7 @@ struct ReadResult {
 
 fn parse(var_str: &str) -> Result<Vec<Token>, VariableError> {
     if var_str.is_empty() {
-        return Err(VariableError::new("Empty variable notation string", 0));
+        return Err(VariableError::new("Empty variable notation string".to_string(), 0));
     }
 
     let mut current_name: Option<String> = None;
@@ -70,14 +92,16 @@ fn parse(var_str: &str) -> Result<Vec<Token>, VariableError> {
 
     loop {
         let read_result = match state {
-            ParserState::Name => read_name_chars(var_str, index),
-            ParserState::Array => read_array_chars(var_str, index),
-            ParserState::FunctionCall => read_function_call_chars(var_str, index),
-            ParserState::AfterToken => read_after_token_chars(var_str, index),
+            ParserState::Name => read_name_chars(&var_str[index..]),
+            ParserState::Array => read_array_chars(&var_str[index..]),
+            ParserState::FunctionCall => read_function_call_chars(&var_str[index..]),
+            ParserState::AfterToken => read_after_token_chars(&var_str[index..]),
             ParserState::End => break
-        }.map_err(|e| {
-            // Adjust received error location by index known here
-            e.offset_location(index)
+        }.map_err(|err| {
+            // Adjust received error location by index known here, and include var_str
+            err
+                .offset_location(index)
+                .add_var_str(var_str)
         })?;
 
         current_name = current_name.or(read_result.name);
@@ -108,10 +132,10 @@ fn parse(var_str: &str) -> Result<Vec<Token>, VariableError> {
     Ok(tokens)
 }
 
-fn read_name_chars(var_str: &str, index: usize) -> Result<ReadResult, VariableError> {
+fn read_name_chars(var_str: &str) -> Result<ReadResult, VariableError> {
     let mut name = "".to_string();
 
-    for (i, c) in var_str[index..].chars().enumerate() {
+    for (i, c) in var_str.chars().enumerate() {
         match c {
             // Valid token name characters
             'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => {
@@ -147,12 +171,8 @@ fn read_name_chars(var_str: &str, index: usize) -> Result<ReadResult, VariableEr
 
             _ => {
                 return Err(VariableError::new(
-                    format!(
-                        "Invalid character '{} in variable notation:\n{}",
-                        c.to_string(),
-                        var_str
-                    ).as_str(),
-                    index + 1
+                    format!("Invalid character '{}'", c.to_string()),
+                    1
                 ));
             }
         }
@@ -160,27 +180,23 @@ fn read_name_chars(var_str: &str, index: usize) -> Result<ReadResult, VariableEr
 
     if name.is_empty() {
         Err(VariableError::new(
-            format!(
-                "Unexpected end of variable notation string; expecting a name. \
-                    Variable notation: \n{}",
-                var_str
-            ).as_str(),
-            index
+            "Unexpected end of variable notation string; expecting a name.".to_string(),
+            0
         ))
     } else {
         Ok(ReadResult {
             name: Some(name),
             token_kind: Some(TokenKind::Leaf),
             state: ParserState::End,
-            chars_read: var_str.len() - index
+            chars_read: var_str.len()
         })
     }
 }
 
-fn read_array_chars(var_str: &str, index: usize) -> Result<ReadResult, VariableError> {
+fn read_array_chars(var_str: &str) -> Result<ReadResult, VariableError> {
     let mut arr_index_str = "".to_string();
 
-    for (i, c) in var_str[index..].chars().enumerate() {
+    for (i, c) in var_str.chars().enumerate() {
         match c {
             '0'..='9' => {
                 arr_index_str.push_str(c.to_string().as_str());
@@ -188,13 +204,7 @@ fn read_array_chars(var_str: &str, index: usize) -> Result<ReadResult, VariableE
 
             ']' => {
                 if arr_index_str.is_empty() {
-                    return Err(VariableError::new(
-                        format!(
-                            "Missing array index in variable notation:\n{}",
-                            var_str
-                        ).as_str(),
-                        index + 1
-                    ));
+                    return Err(VariableError::new("Missing array index".to_string(), 0));
                 }
 
                 return match usize::from_str_radix(arr_index_str.as_str(), 10) {
@@ -210,13 +220,11 @@ fn read_array_chars(var_str: &str, index: usize) -> Result<ReadResult, VariableE
                     Err(e) => {
                         Err(VariableError::new(
                             format!(
-                                "Failed to parse array index '{}': {}. \
-                                    Variable notation:\n{}",
+                                "Failed to parse array index '{}': {}",
                                 arr_index_str,
-                                e.to_string(),
-                                var_str
-                            ).as_str(),
-                            index + i - 1
+                                e
+                            ),
+                            i - 1
                         ))
                     }
                 }
@@ -224,28 +232,20 @@ fn read_array_chars(var_str: &str, index: usize) -> Result<ReadResult, VariableE
 
             _ => {
                 return Err(VariableError::new(
-                    format!(
-                        "Invalid character '{}' in variable notation:\n{}",
-                        c.to_string(),
-                        var_str
-                    ).as_str(),
-                    var_str.len() - index
+                    format!("Invalid character '{}', expecting decimal digit or ']'.", c),
+                    i
                 ));
             }
         }
     }
 
     Err(VariableError::new(
-        format!(
-            "Unexpected end of variable notation string; expecting decimal digits or ']'. \
-                 Variable notation:\n{}",
-            var_str
-        ).as_str(),
-        var_str.len() - index
+        "Unexpected end of variable notation string; expecting decimal digits or ']'".to_string(),
+        var_str.len()
     ))
 }
 
-fn read_function_call_chars(var_str: &str, index: usize) -> Result<ReadResult, VariableError> {
+fn read_function_call_chars(var_str: &str) -> Result<ReadResult, VariableError> {
     let mut is_escaping = false;
     let mut is_in_quotes = false;
     let mut current_arg = "".to_string();
@@ -267,7 +267,7 @@ fn read_function_call_chars(var_str: &str, index: usize) -> Result<ReadResult, V
         '\u{2029}', // Paragraph separator
     ];
 
-    for (i, c) in var_str[index..].chars().enumerate() {
+    for (i, c) in var_str.chars().enumerate() {
         if expect_comma_or_paren {
             match c {
                 ',' => {
@@ -300,13 +300,8 @@ fn read_function_call_chars(var_str: &str, index: usize) -> Result<ReadResult, V
                     );
 
                     return Err(VariableError::new(
-                        format!(
-                            "Invalid character '{}' in function args in variable notation:\n{}\
-                                Expected whitespace, ',', or ')' at this point.",
-                            c.to_string(),
-                            var_str
-                        ).as_str(),
-                        index + i
+                        format!("Invalid character '{}' in function args", c),
+                        i
                     ));
                 }
             }
@@ -344,11 +339,8 @@ fn read_function_call_chars(var_str: &str, index: usize) -> Result<ReadResult, V
                     );
 
                     return Err(VariableError::new(
-                        format!(
-                            "Unexpected '\"' quote character mid-argument in variable notation:\n{}",
-                            var_str
-                        ).as_str(),
-                        index + i
+                        "Unexpected '\"' quote character mid-argument".to_string(),
+                        i
                     ));
                 }
 
@@ -384,11 +376,8 @@ fn read_function_call_chars(var_str: &str, index: usize) -> Result<ReadResult, V
                     );
 
                     return Err(VariableError::new(
-                        format!(
-                            "Unexpected ',' in function args in variable notation: \n{}",
-                            var_str
-                        ).as_str(),
-                        index + 1
+                        "Unexpected ',' in function args".to_string(),
+                        1
                     ));
                 }
 
@@ -451,17 +440,13 @@ fn read_function_call_chars(var_str: &str, index: usize) -> Result<ReadResult, V
     );
 
     Err(VariableError::new(
-        format!(
-            "Unexpected end of variable notation string during function call syntax. \
-                Variable notation:\n{}",
-            var_str
-        ).as_str(),
-        var_str.len() - index
+        "Unexpected end of variable notation string during function call syntax.".to_string(),
+        var_str.len()
     ))
 }
 
-fn read_after_token_chars(var_str: &str, index: usize) -> Result<ReadResult, VariableError> {
-    match var_str.chars().nth(index) {
+fn read_after_token_chars(var_str: &str) -> Result<ReadResult, VariableError> {
+    match var_str.chars().nth(0) {
         Some('.') => Ok(ReadResult {
             name: None,
             token_kind: None,
@@ -470,12 +455,8 @@ fn read_after_token_chars(var_str: &str, index: usize) -> Result<ReadResult, Var
         }),
 
         Some(c) => Err(VariableError::new(
-            format!(
-                "Invalid character '{}' (expected '.') in variable notation:\n{}",
-                c.to_string(),
-                var_str
-            ).as_str(),
-            index
+            format!("Invalid character '{}', expected '.'", c),
+            0
         )),
 
         None => Ok(ReadResult {
