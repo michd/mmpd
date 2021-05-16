@@ -150,11 +150,19 @@ fn parse(var_str: &str) -> Result<Vec<Token>, VariableError> {
 
 fn read_name_chars(var_str: &str) -> Result<ReadResult, VariableError> {
     let mut name = "".to_string();
+    let mut space_seen = false;
 
     for (i, c) in var_str.chars().enumerate() {
         match c {
             // Valid token name characters
             'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => {
+                if !name.is_empty() && space_seen {
+                    return Err(VariableError::new(
+                        "Space characters within names are not supported.".to_string(),
+                        i
+                    ));
+                }
+
                 name.push_str(c.to_string().as_str())
             }
 
@@ -166,6 +174,16 @@ fn read_name_chars(var_str: &str) -> Result<ReadResult, VariableError> {
                     chars_read: i + 1
                 });
             }
+
+            '[' if name.is_empty() => return Err(VariableError::new(
+                "Missing name for array access".to_string(),
+                i
+            )),
+
+            '[' if space_seen => return Err(VariableError::new(
+                "Unexpected space before array index access".to_string(),
+                i - 1
+            )),
 
             '[' => {
                 return Ok(ReadResult {
@@ -184,6 +202,12 @@ fn read_name_chars(var_str: &str) -> Result<ReadResult, VariableError> {
                     chars_read: i + 1
                 })
             },
+
+            _ if is_space(&c) && !name.is_empty() => space_seen = true,
+
+            _ if is_space(&c) => {
+                // Spaces preceding a name are fine.
+            }
 
             _ => {
                 return Err(VariableError::new(
@@ -212,8 +236,15 @@ fn read_name_chars(var_str: &str) -> Result<ReadResult, VariableError> {
 fn read_array_chars(var_str: &str) -> Result<ReadResult, VariableError> {
     let mut arr_index_str = "".to_string();
 
+    let mut space_seen = false;
+
     for (i, c) in var_str.chars().enumerate() {
         match c {
+            '0'..='9' if space_seen => return Err(VariableError::new(
+                "Unexpected space in array index".to_string(),
+                i - 1
+            )),
+
             '0'..='9' => {
                 arr_index_str.push_str(c.to_string().as_str());
             }
@@ -246,6 +277,12 @@ fn read_array_chars(var_str: &str) -> Result<ReadResult, VariableError> {
                 }
             }
 
+            _ if !arr_index_str.is_empty() && is_space(&c) => space_seen = true,
+
+            _ if is_space(&c) => {
+                // Leading spaces are fine
+            }
+
             _ => {
                 return Err(VariableError::new(
                     format!("Invalid character '{}', expecting decimal digit or ']'.", c),
@@ -261,28 +298,33 @@ fn read_array_chars(var_str: &str) -> Result<ReadResult, VariableError> {
     ))
 }
 
-
 fn read_after_token_chars(var_str: &str) -> Result<ReadResult, VariableError> {
-    match var_str.chars().nth(0) {
-        Some('.') => Ok(ReadResult {
-            name: None,
-            token_kind: None,
-            state: ParserState::Name,
-            chars_read: 1
-        }),
+    for (i, c) in var_str.chars().enumerate() {
+        match c {
+            '.' => return Ok(ReadResult {
+                name: None,
+                token_kind: None,
+                state: ParserState::Name,
+                chars_read: 1
+            }),
 
-        Some(c) => Err(VariableError::new(
-            format!("Invalid character '{}', expected '.'", c),
-            0
-        )),
+            _ if is_space(&c) => {
+                // Spaces are fine, ignore.
+            }
 
-        None => Ok(ReadResult {
-            name: None,
-            token_kind: None,
-            state: ParserState::End,
-            chars_read: 0
-        })
+            _ => return Err(VariableError::new(
+                format!("Invalid character '{}'; expected '.', spaces, or end.", c),
+                i
+            ))
+        }
     }
+
+    Ok(ReadResult {
+        name: None,
+        token_kind: None,
+        state: ParserState::End,
+        chars_read: 0
+    })
 }
 
 #[cfg(test)]
@@ -339,6 +381,17 @@ mod tests {
             ]
         );
 
+        // With spaces within square brackets
+        assert_eq!(
+            parse("arr[ 24 ]").unwrap(),
+            vec![Token { name: "arr".to_string(), kind: TokenKind::ArrayIndex(24) }]
+        );
+
+        // Missing name preceding array index
+        assert!(
+            parse("[23]").is_err()
+        );
+
         // Unclosed array notation
         assert!(
             parse("my_namespace.arr[823").is_err()
@@ -347,6 +400,36 @@ mod tests {
         // Non-digits in index
         assert!(
             parse("my_namespace.arr[INVALID]").is_err()
+        );
+
+        // Spaces between characters
+        assert!(
+            parse("ns.arr[34 2 4]").is_err()
+        )
+    }
+
+    #[test]
+    fn allows_spaces_between_tokens() {
+        assert_eq!(
+            parse("ns    .  leaf").unwrap(),
+            vec![
+                Token { name: "ns".to_string(), kind: TokenKind::Namespace },
+                Token { name: "leaf".to_string(), kind: TokenKind::Leaf }
+            ]
+        );
+    }
+
+    #[test]
+    fn disallows_spaces_within_token() {
+        assert!(
+            parse("namespace.something with a space").is_err()
+        );
+    }
+
+    #[test]
+    fn disallows_spaces_before_array_bracket() {
+        assert!(
+            parse("arr [323]").is_err()
         );
     }
 
