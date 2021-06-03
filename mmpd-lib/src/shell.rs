@@ -40,7 +40,7 @@ impl Shell for ShellImpl {
             }
         }
 
-        // Attach any environment variables
+        // Attach any environment expressions
         if let Some(env_vars) = env_vars {
             for (env_key, env_val) in env_vars {
                 cmd.env(env_key, env_val);

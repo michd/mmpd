@@ -1,4 +1,4 @@
-use super::{ReadResult, VariableError, TokenKind, ParserState, is_space};
+use super::{ReadResult, ExpressionError, TokenKind, ParserState, is_space};
 
 #[derive(Debug)]
 enum FunctionParseState {
@@ -16,7 +16,7 @@ struct FunctionReadResult {
     chars_read: usize,
 }
 
-pub(super) fn read_function_call_chars(var_str: &str) -> Result<ReadResult, VariableError> {
+pub(super) fn read_function_call_chars(var_str: &str) -> Result<ReadResult, ExpressionError> {
     let mut values: Vec<String> = vec![];
     let mut index: usize = 0;
     let mut state = FunctionParseState::Start;
@@ -59,7 +59,7 @@ pub(super) fn read_function_call_chars(var_str: &str) -> Result<ReadResult, Vari
     })
 }
 
-fn read_start(var_str: &str) -> Result<FunctionReadResult, VariableError> {
+fn read_start(var_str: &str) -> Result<FunctionReadResult, ExpressionError> {
     for (i, c) in var_str.chars().enumerate() {
         match c {
             '"' => return Ok(FunctionReadResult {
@@ -68,7 +68,7 @@ fn read_start(var_str: &str) -> Result<FunctionReadResult, VariableError> {
                 chars_read: i + 1
             }),
 
-            ',' => return Err(VariableError::new(
+            ',' => return Err(ExpressionError::new(
                 "Unexpected ',' in function invocation syntax".to_string(),
                 0
             )),
@@ -96,25 +96,25 @@ fn read_start(var_str: &str) -> Result<FunctionReadResult, VariableError> {
         }
     }
 
-    Err(VariableError::new(
+    Err(ExpressionError::new(
         "Unexpected end of function invocation syntax".to_string(),
         0
     ))
 }
 
-fn read_bare_value(var_str: &str) -> Result<FunctionReadResult, VariableError> {
+fn read_bare_value(var_str: &str) -> Result<FunctionReadResult, ExpressionError> {
     let mut value = "".to_string();
 
     let mut spaces_seen = false;
 
     for (i, c) in var_str.chars().enumerate() {
         match c {
-            '"' => return Err(VariableError::new(
+            '"' => return Err(ExpressionError::new(
                 "Unexpected '\"' quote character mid-value".to_string(),
                 i
             )),
 
-            ',' if value.is_empty() => return Err(VariableError::new(
+            ',' if value.is_empty() => return Err(ExpressionError::new(
                 "Unexpected ',' in function values".to_string(),
                 i
             )),
@@ -142,7 +142,7 @@ fn read_bare_value(var_str: &str) -> Result<FunctionReadResult, VariableError> {
             }
 
             _ if !value.is_empty() && spaces_seen => {
-                return Err(VariableError::new(
+                return Err(ExpressionError::new(
                     "Bare values in function invocation may not contain spaces".to_string(),
                     i - 1
                 ));
@@ -152,14 +152,14 @@ fn read_bare_value(var_str: &str) -> Result<FunctionReadResult, VariableError> {
         }
     }
 
-    Err(VariableError::new(
+    Err(ExpressionError::new(
         "Unexpected end of variable notation string during function call syntax \
         while reading bare value".to_string(),
         var_str.len()
     ))
 }
 
-fn read_quoted_value(var_str: &str) -> Result<FunctionReadResult, VariableError> {
+fn read_quoted_value(var_str: &str) -> Result<FunctionReadResult, ExpressionError> {
     let mut value = "".to_string();
     let mut is_escaping = false;
 
@@ -192,14 +192,14 @@ fn read_quoted_value(var_str: &str) -> Result<FunctionReadResult, VariableError>
         }
     }
 
-    Err(VariableError::new(
+    Err(ExpressionError::new(
         "Unexpected end of variable notation string during function call syntax \
         while reading quoted value".to_string(),
         var_str.len()
     ))
 }
 
-fn read_after_quoted_value(var_str: &str) -> Result<FunctionReadResult, VariableError> {
+fn read_after_quoted_value(var_str: &str) -> Result<FunctionReadResult, ExpressionError> {
     for (i, c) in var_str.chars().enumerate() {
         match c {
             ',' => return Ok(FunctionReadResult {
@@ -221,7 +221,7 @@ fn read_after_quoted_value(var_str: &str) -> Result<FunctionReadResult, Variable
                 // Carry on, looking for relevant character.
             }
 
-            _ => return Err(VariableError::new(
+            _ => return Err(ExpressionError::new(
                 format!(
                     "Unexpected character '{}' in function call syntax within variable notation \
                     string, expecting ',', ')', or whitespace.",
@@ -232,7 +232,7 @@ fn read_after_quoted_value(var_str: &str) -> Result<FunctionReadResult, Variable
         }
     }
 
-    Err(VariableError::new(
+    Err(ExpressionError::new(
         "Unexpected end of string in function call syntax within \
         variable notation.".to_string(),
         var_str.len()

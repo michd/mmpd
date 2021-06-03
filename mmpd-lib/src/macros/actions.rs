@@ -44,7 +44,7 @@ pub enum Action {
         /// one argument.
         args: Option<Vec<String>>,
 
-        /// A list of key/value pairs with environment variables to be provided to the program
+        /// A list of key/value pairs with environment expressions to be provided to the program
         env_vars: Option<Vec<(String, String)>>
     },
 
@@ -395,7 +395,7 @@ mod tests {
         let mut mock_shell = MockShell::new();
 
         // TODO: Currently this checks only if parameters are passed through as they came.
-        // Later we will want to process some input event-related variables by doing string
+        // Later we will want to process some input event-related expressions by doing string
         // substitution in arguments / env vars. At that point a unit tests for this
         // functionality becomes actually useful.
 

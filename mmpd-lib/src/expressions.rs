@@ -17,15 +17,15 @@ pub enum TokenKind {
 }
 
 #[derive(Debug)]
-pub struct VariableError<'a> {
+pub struct ExpressionError<'a> {
     message: String,
     var_str: &'a str,
     location: usize
 }
 
-impl <'a> VariableError<'a> {
-    fn new(message: String, location: usize) -> VariableError<'a> {
-        VariableError {
+impl <'a> ExpressionError<'a> {
+    fn new(message: String, location: usize) -> ExpressionError<'a> {
+        ExpressionError {
             message: message.to_string(),
             var_str: "",
             location
@@ -43,7 +43,7 @@ impl <'a> VariableError<'a> {
     }
 }
 
-impl Display for VariableError<'_> {
+impl Display for ExpressionError<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -96,9 +96,9 @@ struct ReadResult {
     chars_read: usize
 }
 
-fn parse(var_str: &str) -> Result<Vec<Token>, VariableError> {
+fn parse(var_str: &str) -> Result<Vec<Token>, ExpressionError> {
     if var_str.is_empty() {
-        return Err(VariableError::new("Empty variable notation string".to_string(), 0));
+        return Err(ExpressionError::new("Empty variable notation string".to_string(), 0));
     }
 
     let mut current_name: Option<String> = None;
@@ -148,7 +148,7 @@ fn parse(var_str: &str) -> Result<Vec<Token>, VariableError> {
     Ok(tokens)
 }
 
-fn read_name_chars(var_str: &str) -> Result<ReadResult, VariableError> {
+fn read_name_chars(var_str: &str) -> Result<ReadResult, ExpressionError> {
     let mut name = "".to_string();
     let mut space_seen = false;
 
@@ -157,7 +157,7 @@ fn read_name_chars(var_str: &str) -> Result<ReadResult, VariableError> {
             // Valid token name characters
             'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => {
                 if !name.is_empty() && space_seen {
-                    return Err(VariableError::new(
+                    return Err(ExpressionError::new(
                         "Space characters within names are not supported.".to_string(),
                         i
                     ));
@@ -175,12 +175,12 @@ fn read_name_chars(var_str: &str) -> Result<ReadResult, VariableError> {
                 });
             }
 
-            '[' if name.is_empty() => return Err(VariableError::new(
+            '[' if name.is_empty() => return Err(ExpressionError::new(
                 "Missing name for array access".to_string(),
                 i
             )),
 
-            '[' if space_seen => return Err(VariableError::new(
+            '[' if space_seen => return Err(ExpressionError::new(
                 "Unexpected space before array index access".to_string(),
                 i - 1
             )),
@@ -210,7 +210,7 @@ fn read_name_chars(var_str: &str) -> Result<ReadResult, VariableError> {
             }
 
             _ => {
-                return Err(VariableError::new(
+                return Err(ExpressionError::new(
                     format!("Invalid character '{}'", c.to_string()),
                     1
                 ));
@@ -219,7 +219,7 @@ fn read_name_chars(var_str: &str) -> Result<ReadResult, VariableError> {
     }
 
     if name.is_empty() {
-        Err(VariableError::new(
+        Err(ExpressionError::new(
             "Unexpected end of variable notation string; expecting a name.".to_string(),
             0
         ))
@@ -233,14 +233,14 @@ fn read_name_chars(var_str: &str) -> Result<ReadResult, VariableError> {
     }
 }
 
-fn read_array_chars(var_str: &str) -> Result<ReadResult, VariableError> {
+fn read_array_chars(var_str: &str) -> Result<ReadResult, ExpressionError> {
     let mut arr_index_str = "".to_string();
 
     let mut space_seen = false;
 
     for (i, c) in var_str.chars().enumerate() {
         match c {
-            '0'..='9' if space_seen => return Err(VariableError::new(
+            '0'..='9' if space_seen => return Err(ExpressionError::new(
                 "Unexpected space in array index".to_string(),
                 i - 1
             )),
@@ -251,7 +251,7 @@ fn read_array_chars(var_str: &str) -> Result<ReadResult, VariableError> {
 
             ']' => {
                 if arr_index_str.is_empty() {
-                    return Err(VariableError::new("Missing array index".to_string(), 0));
+                    return Err(ExpressionError::new("Missing array index".to_string(), 0));
                 }
 
                 return match usize::from_str_radix(arr_index_str.as_str(), 10) {
@@ -265,7 +265,7 @@ fn read_array_chars(var_str: &str) -> Result<ReadResult, VariableError> {
                     }
 
                     Err(e) => {
-                        Err(VariableError::new(
+                        Err(ExpressionError::new(
                             format!(
                                 "Failed to parse array index '{}': {}",
                                 arr_index_str,
@@ -284,7 +284,7 @@ fn read_array_chars(var_str: &str) -> Result<ReadResult, VariableError> {
             }
 
             _ => {
-                return Err(VariableError::new(
+                return Err(ExpressionError::new(
                     format!("Invalid character '{}', expecting decimal digit or ']'.", c),
                     i
                 ));
@@ -292,13 +292,13 @@ fn read_array_chars(var_str: &str) -> Result<ReadResult, VariableError> {
         }
     }
 
-    Err(VariableError::new(
+    Err(ExpressionError::new(
         "Unexpected end of variable notation string; expecting decimal digits or ']'".to_string(),
         var_str.len()
     ))
 }
 
-fn read_after_token_chars(var_str: &str) -> Result<ReadResult, VariableError> {
+fn read_after_token_chars(var_str: &str) -> Result<ReadResult, ExpressionError> {
     for (i, c) in var_str.chars().enumerate() {
         match c {
             '.' => return Ok(ReadResult {
@@ -312,7 +312,7 @@ fn read_after_token_chars(var_str: &str) -> Result<ReadResult, VariableError> {
                 // Spaces are fine, ignore.
             }
 
-            _ => return Err(VariableError::new(
+            _ => return Err(ExpressionError::new(
                 format!("Invalid character '{}'; expected '.', spaces, or end.", c),
                 i
             ))
@@ -329,7 +329,7 @@ fn read_after_token_chars(var_str: &str) -> Result<ReadResult, VariableError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::variables::{parse, Token, TokenKind};
+    use crate::expressions::{parse, Token, TokenKind};
 
     #[test]
     fn parses_a_single_leaf_node() {
